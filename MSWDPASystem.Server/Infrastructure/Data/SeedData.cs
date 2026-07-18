@@ -6,7 +6,7 @@ namespace MSWDPASystem.Server.Infrastructure.Data;
 
 public static class SeedData
 {
-    public static readonly string[] Roles = ["Admin", "MSWDStaff", "HeadCoordinator"];
+    public static readonly string[] Roles = ["Admin", "MSWDStaff", "HeadCoordinator", "Citizen"];
 
     public static async Task SeedAsync(IServiceProvider services)
     {
