@@ -11,7 +11,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/households")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class HouseholdController(IMediator mediator) : ControllerBase
 {
     [HttpGet]

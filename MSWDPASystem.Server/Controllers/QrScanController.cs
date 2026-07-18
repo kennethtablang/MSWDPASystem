@@ -7,7 +7,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/qr-scan")]
-[Authorize]
+[Authorize(Roles = "MSWDStaff,Admin")]
 public class QrScanController(IMediator mediator) : ControllerBase
 {
     [HttpPost]

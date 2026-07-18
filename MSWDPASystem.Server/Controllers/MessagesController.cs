@@ -8,7 +8,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/messages")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class MessagesController(IMediator mediator) : ControllerBase
 {
     [HttpGet("inbox")]

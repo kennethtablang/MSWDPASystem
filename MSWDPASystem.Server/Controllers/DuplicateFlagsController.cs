@@ -9,7 +9,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/duplicate-flags")]
-[Authorize]
+[Authorize(Roles = "Admin,HeadCoordinator")]
 public class DuplicateFlagsController(IMediator mediator) : ControllerBase
 {
     [HttpGet]

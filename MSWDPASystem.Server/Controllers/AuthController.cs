@@ -1,8 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MSWDPASystem.Server.Features.Auth.ConfirmEmail;
+using MSWDPASystem.Server.Features.Auth.ForgotPassword;
+using MSWDPASystem.Server.Features.Auth.GetCurrentUser;
 using MSWDPASystem.Server.Features.Auth.Login;
+using MSWDPASystem.Server.Features.Auth.Logout;
 using MSWDPASystem.Server.Features.Auth.RefreshToken;
+using MSWDPASystem.Server.Features.Auth.RegisterCitizen;
+using MSWDPASystem.Server.Features.Auth.ResetPassword;
 
 namespace MSWDPASystem.Server.Controllers;
 
@@ -28,18 +34,56 @@ public class AuthController(IMediator mediator) : ControllerBase
         return Ok(result.Data);
     }
 
-    [Authorize]
-    [HttpPost("logout")]
-    public IActionResult Logout() => Ok(new { message = "Logged out successfully." });
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterCitizenCommand command, CancellationToken ct)
+    {
+        var result = await mediator.Send(command, ct);
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error, errors = result.Errors });
+        return Ok(result.Data);
+    }
+
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailCommand command, CancellationToken ct)
+    {
+        var result = await mediator.Send(command, ct);
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error });
+        return Ok(new { message = "Email verified. You can now sign in." });
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordCommand command, CancellationToken ct)
+    {
+        var result = await mediator.Send(command, ct);
+        return Ok(result.Data);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordCommand command, CancellationToken ct)
+    {
+        var result = await mediator.Send(command, ct);
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error, errors = result.Errors });
+        return Ok(new { message = "Password has been reset. You can now sign in." });
+    }
 
     [Authorize]
-    [HttpGet("me")]
-    public IActionResult Me()
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken ct)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        var userName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
-        var fullName = User.FindFirst("fullName")?.Value;
-        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-        return Ok(new { userId, userName, fullName, role });
+        await mediator.Send(new LogoutCommand(), ct);
+        return Ok(new { message = "Logged out successfully." });
+    }
+
+    // Reads from the database rather than the JWT claims, so a role change,
+    // module-permission change or deactivation is reflected on the next page load.
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetCurrentUserQuery(), ct);
+        if (!result.IsSuccess) return Unauthorized(new { message = result.Error });
+        return Ok(result.Data);
     }
 }

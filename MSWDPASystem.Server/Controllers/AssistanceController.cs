@@ -11,7 +11,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/assistance")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class AssistanceController(IMediator mediator) : ControllerBase
 {
     [HttpGet]

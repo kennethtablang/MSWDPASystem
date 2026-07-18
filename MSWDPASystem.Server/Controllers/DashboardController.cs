@@ -8,7 +8,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/dashboard")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class DashboardController(IMediator mediator) : ControllerBase
 {
     [HttpGet("stats")]

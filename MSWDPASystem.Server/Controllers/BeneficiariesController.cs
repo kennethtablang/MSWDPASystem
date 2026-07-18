@@ -3,11 +3,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MSWDPASystem.Server.Domain.Enums;
 using MSWDPASystem.Server.Features.Beneficiaries.DeleteDocument;
+using MSWDPASystem.Server.Features.Beneficiaries.DownloadDocument;
 using MSWDPASystem.Server.Features.Beneficiaries.GetBeneficiaries;
 using MSWDPASystem.Server.Features.Beneficiaries.GetBeneficiary;
+using MSWDPASystem.Server.Features.Beneficiaries.GetLinkCandidates;
 using MSWDPASystem.Server.Features.Beneficiaries.GetQrCode;
+using MSWDPASystem.Server.Features.Beneficiaries.GetSignature;
+using MSWDPASystem.Server.Features.Beneficiaries.LinkCitizen;
 using MSWDPASystem.Server.Features.Beneficiaries.RegisterBeneficiary;
 using MSWDPASystem.Server.Features.Beneficiaries.SaveSignature;
+using MSWDPASystem.Server.Features.Beneficiaries.UnlinkCitizen;
 using MSWDPASystem.Server.Features.Beneficiaries.UpdateBeneficiary;
 using MSWDPASystem.Server.Features.Beneficiaries.UpdateStatus;
 using MSWDPASystem.Server.Features.Beneficiaries.UploadDocument;
@@ -16,7 +21,7 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/beneficiaries")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class BeneficiariesController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
@@ -84,6 +89,28 @@ public class BeneficiariesController(IMediator mediator) : ControllerBase
         return Ok(result.Data);
     }
 
+    // Documents hold beneficiary personal data, so they are streamed through this
+    // authorized endpoint rather than static-file middleware (FR-6.5, NFR-7.2/7.4).
+    [HttpGet("{id:guid}/documents/{docId:guid}/download")]
+    public async Task<IActionResult> DownloadDocument(Guid id, Guid docId, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DownloadDocumentQuery(id, docId), ct);
+        if (!result.IsSuccess) return NotFound(new { message = result.Error });
+
+        var file = result.Data!;
+        return File(file.Content, file.ContentType, file.FileName);
+    }
+
+    [HttpGet("{id:guid}/signature")]
+    public async Task<IActionResult> GetSignature(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetSignatureQuery(id), ct);
+        if (!result.IsSuccess) return NotFound(new { message = result.Error });
+
+        var file = result.Data!;
+        return File(file.Content, file.ContentType);
+    }
+
     [HttpDelete("{id:guid}/documents/{docId:guid}")]
     [Authorize(Roles = "MSWDStaff,Admin")]
     public async Task<IActionResult> DeleteDocument(Guid id, Guid docId, CancellationToken ct)
@@ -117,6 +144,30 @@ public class BeneficiariesController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new GetQrCodeQuery(id), ct);
         if (!result.IsSuccess) return NotFound(new { message = result.Error });
         return Ok(new { qrCode = result.Data });
+    }
+
+    [HttpGet("{id:guid}/link-candidates")]
+    [Authorize(Roles = "MSWDStaff,Admin")]
+    public async Task<IActionResult> GetLinkCandidates(Guid id, [FromQuery] string? search, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetLinkCandidatesQuery(search), ct);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:guid}/citizen/{userId}")]
+    [Authorize(Roles = "MSWDStaff,Admin")]
+    public async Task<IActionResult> LinkCitizen(Guid id, string userId, CancellationToken ct)
+    {
+        var result = await mediator.Send(new LinkCitizenCommand(id, userId), ct);
+        return result.IsSuccess ? NoContent() : BadRequest(new { message = result.Error });
+    }
+
+    [HttpDelete("{id:guid}/citizen")]
+    [Authorize(Roles = "MSWDStaff,Admin")]
+    public async Task<IActionResult> UnlinkCitizen(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new UnlinkCitizenCommand(id), ct);
+        return result.IsSuccess ? NoContent() : BadRequest(new { message = result.Error });
     }
 }
 

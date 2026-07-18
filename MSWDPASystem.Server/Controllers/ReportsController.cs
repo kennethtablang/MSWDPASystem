@@ -4,32 +4,54 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MSWDPASystem.Server.Domain.Enums;
+using MSWDPASystem.Server.Features.Reports.GetSummary;
+using MSWDPASystem.Server.Features.Reports.Pdf;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/reports")]
-[Authorize]
-public class ReportsController(ApplicationDbContext db) : ControllerBase
+[Authorize(Roles = "Admin,HeadCoordinator")]
+public class ReportsController(ApplicationDbContext db, IMediator mediator) : ControllerBase
 {
+    // ---- Statistical summary (daily / monthly / annual) ----
+
+    [HttpGet("summary")]
+    public async Task<IActionResult> Summary(
+        [FromQuery] ReportPeriod period,
+        [FromQuery] DateTime? referenceDate,
+        [FromQuery] string? barangay,
+        [FromQuery] Guid? programId,
+        CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetReportSummaryQuery(period, referenceDate, barangay, programId), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("summary/pdf")]
+    public async Task<IActionResult> SummaryPdf(
+        [FromQuery] ReportPeriod period,
+        [FromQuery] DateTime? referenceDate,
+        [FromQuery] string? barangay,
+        [FromQuery] Guid? programId,
+        CancellationToken ct)
+    {
+        var summary = await mediator.Send(new GetReportSummaryQuery(period, referenceDate, barangay, programId), ct);
+        var pdf = ReportPdfBuilder.BuildSummary(summary);
+        return File(pdf, "application/pdf", $"summary_{period}_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    // ---- Beneficiaries list ----
+
     [HttpGet("beneficiaries")]
     public async Task<IActionResult> BeneficiariesExcel(
         [FromQuery] string? barangay,
         [FromQuery] BeneficiaryStatus? status,
+        [FromQuery] Guid? programId,
         CancellationToken ct)
     {
-        var query = db.Beneficiaries
-            .Include(b => b.Programs).ThenInclude(bp => bp.WelfareProgram)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(barangay))
-            query = query.Where(b => b.Barangay == barangay);
-
-        if (status.HasValue)
-            query = query.Where(b => b.Status == status.Value);
-
-        var list = await query.OrderBy(b => b.LastName).ThenBy(b => b.FirstName).ToListAsync(ct);
+        var list = await QueryBeneficiaries(barangay, status, programId, ct);
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Beneficiaries");
@@ -86,24 +108,11 @@ public class ReportsController(ApplicationDbContext db) : ControllerBase
         [FromQuery] AssistanceRequestStatus? status,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
+        [FromQuery] string? barangay,
+        [FromQuery] Guid? programId,
         CancellationToken ct)
     {
-        var query = db.AssistanceRequests
-            .Include(r => r.Beneficiary)
-            .Include(r => r.AssistanceType)
-            .Include(r => r.WelfareProgram)
-            .AsQueryable();
-
-        if (status.HasValue)
-            query = query.Where(r => r.Status == status.Value);
-
-        if (dateFrom.HasValue)
-            query = query.Where(r => r.CreatedAt >= dateFrom.Value);
-
-        if (dateTo.HasValue)
-            query = query.Where(r => r.CreatedAt <= dateTo.Value.AddDays(1));
-
-        var list = await query.OrderByDescending(r => r.CreatedAt).ToListAsync(ct);
+        var list = await QueryAssistance(status, dateFrom, dateTo, barangay, programId, ct);
 
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Assistance Requests");
@@ -149,5 +158,106 @@ public class ReportsController(ApplicationDbContext db) : ControllerBase
         return File(ms.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             filename);
+    }
+
+    [HttpGet("beneficiaries/pdf")]
+    public async Task<IActionResult> BeneficiariesPdf(
+        [FromQuery] string? barangay,
+        [FromQuery] BeneficiaryStatus? status,
+        [FromQuery] Guid? programId,
+        CancellationToken ct)
+    {
+        var list = await QueryBeneficiaries(barangay, status, programId, ct);
+        var asOf = DateTime.Today;
+
+        var rows = list.Select(b =>
+        {
+            var age = asOf.Year - b.DateOfBirth.Year;
+            if (b.DateOfBirth > DateOnly.FromDateTime(asOf).AddYears(-age)) age--;
+            return new BeneficiaryRow(
+                b.ClientNumber, b.FullName, b.Sex.ToString(), age,
+                b.Barangay,
+                string.Join(", ", b.Programs.Where(p => p.IsActive).Select(p => p.WelfareProgram.Name)),
+                b.Status.ToString(), b.CreatedAt.ToString("yyyy-MM-dd"));
+        }).ToList();
+
+        var pdf = ReportPdfBuilder.BuildBeneficiaryList(rows, barangay, status?.ToString());
+        return File(pdf, "application/pdf", $"beneficiaries_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    [HttpGet("assistance/pdf")]
+    public async Task<IActionResult> AssistancePdf(
+        [FromQuery] AssistanceRequestStatus? status,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] string? barangay,
+        [FromQuery] Guid? programId,
+        CancellationToken ct)
+    {
+        var list = await QueryAssistance(status, dateFrom, dateTo, barangay, programId, ct);
+
+        var rows = list.Select(r => new AssistanceRow(
+            r.RequestNumber,
+            $"{r.Beneficiary.FirstName} {r.Beneficiary.LastName}",
+            r.AssistanceType.Name,
+            r.WelfareProgram?.Name ?? "—",
+            r.Amount?.ToString("N2") ?? "—",
+            r.Status.ToString(),
+            r.CreatedAt.ToString("yyyy-MM-dd"),
+            r.ReleasedAt?.ToString("yyyy-MM-dd") ?? "—")).ToList();
+
+        var pdf = ReportPdfBuilder.BuildAssistanceList(rows, status?.ToString(), dateFrom, dateTo);
+        return File(pdf, "application/pdf", $"assistance_{DateTime.Now:yyyyMMdd}.pdf");
+    }
+
+    // ---- shared queries ----
+
+    private async Task<List<Domain.Entities.Beneficiary>> QueryBeneficiaries(
+        string? barangay, BeneficiaryStatus? status, Guid? programId, CancellationToken ct)
+    {
+        var query = db.Beneficiaries
+            .AsNoTracking()
+            .Include(b => b.Programs).ThenInclude(bp => bp.WelfareProgram)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(barangay))
+            query = query.Where(b => b.Barangay == barangay);
+
+        if (status.HasValue)
+            query = query.Where(b => b.Status == status.Value);
+
+        if (programId.HasValue)
+            query = query.Where(b => b.Programs.Any(p => p.WelfareProgramId == programId));
+
+        return await query.OrderBy(b => b.LastName).ThenBy(b => b.FirstName).ToListAsync(ct);
+    }
+
+    private async Task<List<Domain.Entities.AssistanceRequest>> QueryAssistance(
+        AssistanceRequestStatus? status, DateTime? dateFrom, DateTime? dateTo,
+        string? barangay, Guid? programId, CancellationToken ct)
+    {
+        var query = db.AssistanceRequests
+            .AsNoTracking()
+            .Include(r => r.Beneficiary)
+            .Include(r => r.AssistanceType)
+            .Include(r => r.WelfareProgram)
+            .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(r => r.Status == status.Value);
+
+        if (dateFrom.HasValue)
+            query = query.Where(r => r.CreatedAt >= dateFrom.Value);
+
+        if (dateTo.HasValue)
+            query = query.Where(r => r.CreatedAt <= dateTo.Value.AddDays(1));
+
+        if (!string.IsNullOrWhiteSpace(barangay))
+            query = query.Where(r => r.Beneficiary.Barangay == barangay);
+
+        if (programId.HasValue)
+            query = query.Where(r => r.WelfareProgramId == programId);
+
+        return await query.OrderByDescending(r => r.CreatedAt).ToListAsync(ct);
     }
 }

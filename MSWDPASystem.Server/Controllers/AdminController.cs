@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MSWDPASystem.Server.Features.Admin.CreateAssistanceType;
 using MSWDPASystem.Server.Features.Admin.CreateWelfareProgram;
 using MSWDPASystem.Server.Features.Admin.GetAssistanceTypes;
+using MSWDPASystem.Server.Features.Admin.GetSystemStats;
 using MSWDPASystem.Server.Features.Admin.GetWelfarePrograms;
 using MSWDPASystem.Server.Features.Admin.UpdateAssistanceType;
 using MSWDPASystem.Server.Features.Admin.UpdateWelfareProgram;
@@ -12,9 +13,17 @@ namespace MSWDPASystem.Server.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize]
+[Authorize(Roles = "Admin,MSWDStaff,HeadCoordinator")]
 public class AdminController(IMediator mediator) : ControllerBase
 {
+    [HttpGet("system-stats")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetSystemStats(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetSystemStatsQuery(), ct);
+        return Ok(result);
+    }
+
     [HttpGet("welfare-programs")]
     public async Task<IActionResult> GetWelfarePrograms(
         [FromQuery] bool activeOnly = true, CancellationToken ct = default)
