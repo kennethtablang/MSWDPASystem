@@ -8,5 +8,6 @@ public record LoginResponse(
     string UserName,
     string FullName,
     string Email,
-    string Role
+    string Role,
+    List<string>? AllowedModules
 );

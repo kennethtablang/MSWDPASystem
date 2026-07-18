@@ -24,9 +24,19 @@ public class LoginCommandHandler(
         if (!await userManager.CheckPasswordAsync(user, request.Password))
             return Result<LoginResponse>.Failure("Invalid credentials or account is inactive.");
 
+        // Staff accounts are created with EmailConfirmed = true; this only
+        // gates self-registered citizen accounts pending verification.
+        if (!user.EmailConfirmed)
+            return Result<LoginResponse>.Failure("Please verify your email address first. Check your inbox for the verification link.");
+
         var roles = await userManager.GetRolesAsync(user);
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var refreshToken = tokenService.GenerateRefreshToken();
+
+        // FR-1.5: MSWD Staff carry their effective module access (null = full default).
+        var allowedModules = roles.Contains("MSWDStaff")
+            ? Common.Security.AppModules.Parse(user.ModuleAccess) ?? Common.Security.AppModules.ConfigurableKeys.ToList()
+            : null;
 
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiry = tokenService.GetRefreshTokenExpiry();
@@ -53,7 +63,8 @@ public class LoginCommandHandler(
             UserName: user.UserName ?? string.Empty,
             FullName: user.FullName,
             Email: user.Email ?? string.Empty,
-            Role: roles.FirstOrDefault() ?? string.Empty
+            Role: roles.FirstOrDefault() ?? string.Empty,
+            AllowedModules: allowedModules
         ));
     }
 }
