@@ -24,10 +24,15 @@ public record BeneficiaryDetailDto(
     List<ProgramEnrollmentDto> Programs,
     List<RecentAssistanceDto> RecentAssistance,
     List<DocumentDto> Documents,
-    string? SignatureUrl,
+    // The signature image itself is fetched from the authorized
+    // GET api/beneficiaries/{id}/signature endpoint, never linked directly.
+    bool HasSignature,
+    LinkedCitizenDto? LinkedCitizen,
     DateTime CreatedAt,
     DateTime? UpdatedAt
 );
+
+public record LinkedCitizenDto(string UserId, string FullName, string UserName, string Email, bool EmailConfirmed);
 
 public record ProgramEnrollmentDto(Guid ProgramId, string ProgramName, DateOnly EnrollmentDate, bool IsActive);
 

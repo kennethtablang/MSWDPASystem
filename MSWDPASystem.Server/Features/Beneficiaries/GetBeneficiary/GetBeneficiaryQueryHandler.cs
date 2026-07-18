@@ -1,13 +1,12 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using MSWDPASystem.Server.Common.Exceptions;
-using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Features.Beneficiaries.GetBeneficiary;
 
-public class GetBeneficiaryQueryHandler(ApplicationDbContext context, IFileStorageService fileStorage)
+public class GetBeneficiaryQueryHandler(ApplicationDbContext context)
     : IRequestHandler<GetBeneficiaryQuery, Result<BeneficiaryDetailDto>>
 {
     public async Task<Result<BeneficiaryDetailDto>> Handle(
@@ -23,6 +22,11 @@ public class GetBeneficiaryQueryHandler(ApplicationDbContext context, IFileStora
 
         var age = DateTime.Today.Year - b.DateOfBirth.Year;
         if (b.DateOfBirth.DayOfYear > DateTime.Today.DayOfYear) age--;
+
+        var linkedCitizen = await context.Users.AsNoTracking()
+            .Where(u => u.LinkedBeneficiaryId == b.Id)
+            .Select(u => new LinkedCitizenDto(u.Id, u.FullName, u.UserName!, u.Email!, u.EmailConfirmed))
+            .FirstOrDefaultAsync(cancellationToken);
 
         return Result<BeneficiaryDetailDto>.Success(new BeneficiaryDetailDto(
             b.Id, b.ClientNumber,
@@ -41,7 +45,8 @@ public class GetBeneficiaryQueryHandler(ApplicationDbContext context, IFileStora
                     r.Amount, r.Status.ToString(), r.CreatedAt)).ToList(),
             b.Documents.OrderByDescending(d => d.CreatedAt)
                 .Select(d => new DocumentDto(d.Id, d.FileName, d.DocumentType ?? "General", d.CreatedAt)).ToList(),
-            string.IsNullOrWhiteSpace(b.SignatureFilePath) ? null : fileStorage.GetFileUrl(b.SignatureFilePath),
+            !string.IsNullOrWhiteSpace(b.SignatureFilePath),
+            linkedCitizen,
             b.CreatedAt, b.UpdatedAt));
     }
 }
