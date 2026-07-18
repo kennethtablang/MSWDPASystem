@@ -46,7 +46,8 @@ public class SaveSignatureCommandHandler(
 
         await db.SaveChangesAsync(ct);
 
-        return Result<string>.Success(fileStorage.GetFileUrl(filePath));
+        // The image is served only from the authorized signature endpoint.
+        return Result<string>.Success($"/api/beneficiaries/{beneficiary.Id}/signature");
     }
 
     private static byte[]? DecodePngDataUrl(string dataUrl)
