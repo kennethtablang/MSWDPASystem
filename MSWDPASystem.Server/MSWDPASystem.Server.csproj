@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,6 +7,7 @@
     <SpaRoot>..\mswdpasystem.client</SpaRoot>
     <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:49400</SpaProxyServerUrl>
+    <UserSecretsId>464f2730-125a-41d5-9e93-9a8744eb0754</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

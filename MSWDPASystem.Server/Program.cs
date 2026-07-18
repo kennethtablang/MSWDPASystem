@@ -41,6 +41,18 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JwtSettings>(jwtSettings);
 
+// The signing key is supplied out-of-band (user-secrets in development, the
+// JwtSettings__SecretKey environment variable in production) so it is never
+// committed. Fail loudly at startup rather than with an opaque NullReferenceException.
+var jwtSecretKey = jwtSettings["SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtSecretKey) || Encoding.UTF8.GetByteCount(jwtSecretKey) < 32)
+{
+    throw new InvalidOperationException(
+        "JwtSettings:SecretKey is missing or shorter than 32 bytes. " +
+        "Set it with: dotnet user-secrets set \"JwtSettings:SecretKey\" \"<48+ random bytes, base64>\" " +
+        "(development), or via the JwtSettings__SecretKey environment variable (production).");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -56,8 +68,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
         ClockSkew = TimeSpan.Zero
     };
 });
@@ -80,6 +91,12 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
+// Email — "Dev" logs messages; "Smtp" sends via Email:Smtp configuration
+if (string.Equals(builder.Configuration["Email:Mode"], "Smtp", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+else
+    builder.Services.AddScoped<IEmailService, DevEmailService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -162,13 +179,13 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Serve uploaded files
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
-        Path.Combine(app.Environment.ContentRootPath, "uploads")),
-    RequestPath = "/files"
-});
+// FR-1.5: enforce per-staff module access after authentication.
+app.UseMiddleware<MSWDPASystem.Server.Common.Security.ModuleAccessMiddleware>();
+
+// NOTE: uploaded files are deliberately NOT served by static-file middleware.
+// They contain beneficiary personal data (documents, signatures) and are only
+// reachable through authorized endpoints on BeneficiariesController, which apply
+// role checks and write an access audit entry (FR-6.5, NFR-7.2, NFR-7.4 / RA 10173).
 
 app.MapControllers();
 app.MapFallbackToFile("/index.html");
