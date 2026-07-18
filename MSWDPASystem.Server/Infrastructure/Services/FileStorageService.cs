@@ -36,16 +36,22 @@ public class FileStorageService(IConfiguration configuration, IWebHostEnvironmen
         return Task.CompletedTask;
     }
 
-    public string GetFileUrl(string filePath)
+    public async Task<byte[]?> ReadFileAsync(string filePath)
     {
-        // Files are served by static-file middleware rooted at the base storage folder
-        // (RequestPath "/files"), so the stored base-path prefix must be stripped.
+        if (string.IsNullOrWhiteSpace(filePath)) return null;
+
         var basePath = configuration["FileStorage:BasePath"] ?? "uploads";
-        var normalized = filePath.Replace("\\", "/");
-        var prefix = basePath.Replace("\\", "/").TrimEnd('/') + "/";
-        if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            normalized = normalized[prefix.Length..];
-        return $"/files/{normalized}";
+        var storageRoot = Path.GetFullPath(Path.Combine(environment.ContentRootPath, basePath));
+        var fullPath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, filePath));
+
+        // Containment check: never read outside the storage root, even if a stored
+        // path were ever tampered with to contain traversal segments.
+        if (!fullPath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (!File.Exists(fullPath)) return null;
+
+        return await File.ReadAllBytesAsync(fullPath);
     }
 
     public bool IsValidFileType(string contentType, string fileName) =>
