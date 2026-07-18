@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
@@ -9,6 +10,8 @@ namespace MSWDPASystem.Server.Features.Auth.Login;
 
 public class LoginCommandHandler(
     UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    IOptions<IdentityOptions> identityOptions,
     ITokenService tokenService,
     ApplicationDbContext context)
     : IRequestHandler<LoginCommand, Result<LoginResponse>>
@@ -21,7 +24,19 @@ public class LoginCommandHandler(
         if (user == null || !user.IsActive)
             return Result<LoginResponse>.Failure("Invalid credentials or account is inactive.");
 
-        if (!await userManager.CheckPasswordAsync(user, request.Password))
+        // Use SignInManager (not UserManager.CheckPasswordAsync) so failed attempts are
+        // counted and the configured lockout policy is actually applied (FR-1.9, NFR-7.1).
+        // A successful check resets the failure counter automatically.
+        var signInResult = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+
+        if (signInResult.IsLockedOut)
+        {
+            var minutes = (int)identityOptions.Value.Lockout.DefaultLockoutTimeSpan.TotalMinutes;
+            return Result<LoginResponse>.Failure(
+                $"This account is temporarily locked after too many failed sign-in attempts. Please try again in {minutes} minutes.");
+        }
+
+        if (!signInResult.Succeeded)
             return Result<LoginResponse>.Failure("Invalid credentials or account is inactive.");
 
         // Staff accounts are created with EmailConfirmed = true; this only
