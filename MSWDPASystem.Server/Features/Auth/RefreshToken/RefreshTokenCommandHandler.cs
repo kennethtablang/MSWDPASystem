@@ -27,6 +27,10 @@ public class RefreshTokenCommandHandler(
         var accessToken = tokenService.GenerateAccessToken(user, roles);
         var newRefreshToken = tokenService.GenerateRefreshToken();
 
+        var allowedModules = roles.Contains("MSWDStaff")
+            ? Common.Security.AppModules.Parse(user.ModuleAccess) ?? Common.Security.AppModules.ConfigurableKeys.ToList()
+            : null;
+
         user.RefreshToken = newRefreshToken;
         user.RefreshTokenExpiry = tokenService.GetRefreshTokenExpiry();
         await userManager.UpdateAsync(user);
@@ -40,7 +44,8 @@ public class RefreshTokenCommandHandler(
             UserName: user.UserName ?? string.Empty,
             FullName: user.FullName,
             Email: user.Email ?? string.Empty,
-            Role: roles.FirstOrDefault() ?? string.Empty
+            Role: roles.FirstOrDefault() ?? string.Empty,
+            AllowedModules: allowedModules
         ));
     }
 }
