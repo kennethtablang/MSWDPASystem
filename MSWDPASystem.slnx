@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="mswdpasystem.client/mswdpasystem.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="MSWDPASystem.Server/MSWDPASystem.Server.csproj" />
+</Solution>
