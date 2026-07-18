@@ -6,8 +6,12 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Plus, Pencil } from 'lucide-react';
 import api from '../../shared/utils/api';
+import { Card, CardHeader, CardBody } from '../../shared/components/ui';
+import Button from '../../shared/components/ui/Button';
+import FormField, { Input, Select, Textarea } from '../../shared/components/ui/FormField';
 import Modal from '../../shared/components/Modal';
 import DataTable from '../../shared/components/DataTable';
+import SystemMonitoring from './SystemMonitoring';
 
 const programSchema = z.object({
   name: z.string().min(1, 'Required').max(200),
@@ -23,14 +27,11 @@ const typeSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-function Field({ label, error, children }) {
+function StatusBadge({ active }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+      {active ? 'Active' : 'Inactive'}
+    </span>
   );
 }
 
@@ -51,12 +52,10 @@ export default function AdminPage() {
     queryFn: () => api.get('/admin/assistance-types', { params: { activeOnly: false } }).then(r => r.data),
   });
 
-  // Program form
   const { register: regP, handleSubmit: submitP, reset: resetP, formState: { errors: errP } } = useForm({
     resolver: zodResolver(programSchema),
   });
 
-  // Type form
   const { register: regT, handleSubmit: submitT, reset: resetT, formState: { errors: errT } } = useForm({
     resolver: zodResolver(typeSchema),
   });
@@ -116,10 +115,11 @@ export default function AdminPage() {
     }
   };
 
-  const StatusBadge = ({ active }) => (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-      {active ? 'Active' : 'Inactive'}
-    </span>
+  const editBtn = (open, row) => (
+    <button onClick={e => { e.stopPropagation(); open(row); }}
+      className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors" aria-label="Edit">
+      <Pencil size={14} />
+    </button>
   );
 
   const programColumns = [
@@ -127,24 +127,14 @@ export default function AdminPage() {
     { key: 'name', header: 'Program Name' },
     { key: 'description', header: 'Description', render: v => v ?? '—' },
     { key: 'isActive', header: 'Status', render: v => <StatusBadge active={v} /> },
-    { key: 'id', header: '', render: (id, row) => (
-      <button onClick={e => { e.stopPropagation(); openProgramModal(row); }}
-        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
-        <Pencil size={14} />
-      </button>
-    )},
+    { key: 'id', header: '', render: (id, row) => editBtn(openProgramModal, row) },
   ];
 
   const typeColumns = [
     { key: 'name', header: 'Assistance Type' },
     { key: 'description', header: 'Description', render: v => v ?? '—' },
     { key: 'isActive', header: 'Status', render: v => <StatusBadge active={v} /> },
-    { key: 'id', header: '', render: (id, row) => (
-      <button onClick={e => { e.stopPropagation(); openTypeModal(row); }}
-        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors">
-        <Pencil size={14} />
-      </button>
-    )},
+    { key: 'id', header: '', render: (id, row) => editBtn(openTypeModal, row) },
   ];
 
   const isProgramSaving = createProgramMutation.isPending || updateProgramMutation.isPending;
@@ -152,61 +142,64 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
+      {/* System Monitoring (FR-8.3 / FR-8.4) */}
+      <SystemMonitoring />
+
       {/* Welfare Programs */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">Welfare Programs</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Manage the list of welfare programs</p>
-          </div>
-          <button onClick={() => openProgramModal()}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
-            <Plus size={15} /> Add Program
-          </button>
-        </div>
-        <DataTable columns={programColumns} data={programs} loading={loadingPrograms} keyField="id" emptyMessage="No welfare programs defined." />
-      </section>
+      <Card>
+        <CardHeader
+          title="Welfare Programs"
+          subtitle="Manage the list of welfare programs"
+          actions={
+            <Button size="sm" variant="primary" onClick={() => openProgramModal()}>
+              <Plus size={15} /> Add Program
+            </Button>
+          }
+        />
+        <CardBody>
+          <DataTable columns={programColumns} data={programs} loading={loadingPrograms} keyField="id" emptyMessage="No welfare programs defined." />
+        </CardBody>
+      </Card>
 
       {/* Assistance Types */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">Assistance Types</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Manage categories of assistance provided</p>
-          </div>
-          <button onClick={() => openTypeModal()}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
-            <Plus size={15} /> Add Type
-          </button>
-        </div>
-        <DataTable columns={typeColumns} data={types} loading={loadingTypes} keyField="id" emptyMessage="No assistance types defined." />
-      </section>
+      <Card>
+        <CardHeader
+          title="Assistance Types"
+          subtitle="Manage categories of assistance provided"
+          actions={
+            <Button size="sm" variant="primary" onClick={() => openTypeModal()}>
+              <Plus size={15} /> Add Type
+            </Button>
+          }
+        />
+        <CardBody>
+          <DataTable columns={typeColumns} data={types} loading={loadingTypes} keyField="id" emptyMessage="No assistance types defined." />
+        </CardBody>
+      </Card>
 
       {/* Program Modal */}
       <Modal isOpen={programModal} onClose={closeProgramModal} title={editProgram ? 'Edit Welfare Program' : 'Add Welfare Program'} size="sm">
         <form onSubmit={submitP(onProgramSubmit)} className="space-y-4">
-          <Field label="Program Name" error={errP.name?.message}>
-            <input {...regP('name')} className={inputCls} />
-          </Field>
-          <Field label="Code" error={errP.code?.message}>
-            <input {...regP('code')} className={inputCls} placeholder="e.g. SOCPEN, PWD" />
-          </Field>
-          <Field label="Description" error={errP.description?.message}>
-            <textarea {...regP('description')} rows={2} className={`${inputCls} resize-none`} />
-          </Field>
+          <FormField label="Program Name" required error={errP.name?.message}>
+            <Input {...regP('name')} error={errP.name?.message} />
+          </FormField>
+          <FormField label="Code" error={errP.code?.message}>
+            <Input {...regP('code')} placeholder="e.g. SOCPEN, PWD" error={errP.code?.message} />
+          </FormField>
+          <FormField label="Description" error={errP.description?.message}>
+            <Textarea {...regP('description')} rows={2} className="resize-none" error={errP.description?.message} />
+          </FormField>
           {editProgram && (
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" {...regP('isActive')} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+              <input type="checkbox" {...regP('isActive')} className="h-4 w-4 rounded border-gray-300 text-primary-600" />
               Active
             </label>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeProgramModal}
-              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={isProgramSaving}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+            <Button type="button" variant="outline" onClick={closeProgramModal}>Cancel</Button>
+            <Button type="submit" variant="primary" loading={isProgramSaving}>
               {isProgramSaving ? 'Saving…' : editProgram ? 'Save Changes' : 'Add Program'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -214,33 +207,31 @@ export default function AdminPage() {
       {/* Type Modal */}
       <Modal isOpen={typeModal} onClose={closeTypeModal} title={editType ? 'Edit Assistance Type' : 'Add Assistance Type'} size="sm">
         <form onSubmit={submitT(onTypeSubmit)} className="space-y-4">
-          <Field label="Type Name" error={errT.name?.message}>
-            <input {...regT('name')} className={inputCls} />
-          </Field>
-          <Field label="Description" error={errT.description?.message}>
-            <textarea {...regT('description')} rows={2} className={`${inputCls} resize-none`} />
-          </Field>
+          <FormField label="Type Name" required error={errT.name?.message}>
+            <Input {...regT('name')} error={errT.name?.message} />
+          </FormField>
+          <FormField label="Description" error={errT.description?.message}>
+            <Textarea {...regT('description')} rows={2} className="resize-none" error={errT.description?.message} />
+          </FormField>
           {!editType && (
-            <Field label="Associated Program (optional)" error={errT.welfareProgramId?.message}>
-              <select {...regT('welfareProgramId')} className={inputCls}>
+            <FormField label="Associated Program (optional)" error={errT.welfareProgramId?.message}>
+              <Select {...regT('welfareProgramId')} error={errT.welfareProgramId?.message}>
                 <option value="">None</option>
                 {programs.filter(p => p.isActive).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </Field>
+              </Select>
+            </FormField>
           )}
           {editType && (
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" {...regT('isActive')} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+              <input type="checkbox" {...regT('isActive')} className="h-4 w-4 rounded border-gray-300 text-primary-600" />
               Active
             </label>
           )}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={closeTypeModal}
-              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button type="submit" disabled={isTypeSaving}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+            <Button type="button" variant="outline" onClick={closeTypeModal}>Cancel</Button>
+            <Button type="submit" variant="primary" loading={isTypeSaving}>
               {isTypeSaving ? 'Saving…' : editType ? 'Save Changes' : 'Add Type'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
