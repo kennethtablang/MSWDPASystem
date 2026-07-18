@@ -24,15 +24,15 @@ const schema = z.object({
   welfareProgramIds: z.array(z.string()).optional(),
 });
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 function Field({ label, error, children, required }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        {label}{required && <span className="text-accent-500 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-accent-600">{error}</p>}
     </div>
   );
 }
@@ -166,7 +166,7 @@ export default function RegisterBeneficiaryPage() {
                       type="checkbox"
                       value={p.id}
                       {...register('welfareProgramIds')}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     {p.name}
                   </label>
@@ -181,7 +181,7 @@ export default function RegisterBeneficiaryPage() {
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-5 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {mutation.isPending ? 'Registering…' : 'Register Beneficiary'}
             </button>
           </div>

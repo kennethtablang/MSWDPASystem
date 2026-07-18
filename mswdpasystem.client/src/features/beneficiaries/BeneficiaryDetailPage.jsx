@@ -1,13 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, QrCode, FileText, Upload, Trash2, ShieldCheck, PenLine } from 'lucide-react';
+import { ArrowLeft, Edit, QrCode, FileText, Upload, Trash2, ShieldCheck, PenLine, UserPlus, Unlink, Search, Mail, ShieldAlert, Download } from 'lucide-react';
 import { useAuth } from '../../shared/context/AuthContext';
 import api from '../../shared/utils/api';
+import { downloadBlob } from '../../shared/utils/download';
 import StatusBadge from '../../shared/components/StatusBadge';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 import Modal from '../../shared/components/Modal';
@@ -34,16 +35,16 @@ const editSchema = z.object({
   welfareProgramIds: z.array(z.string()).optional(),
 });
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 function Field({ label, error, children, required }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        {label}{required && <span className="text-accent-600 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-accent-600">{error}</p>}
     </div>
   );
 }
@@ -67,12 +68,45 @@ export default function BeneficiaryDetailPage() {
   const [deleteDocTarget, setDeleteDocTarget] = useState(null);
   const [uploadDocOpen, setUploadDocOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({ file: null, documentType: '', description: '' });
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkSearch, setLinkSearch] = useState('');
+  const [unlinkConfirm, setUnlinkConfirm] = useState(false);
 
   const { data: b, isLoading } = useQuery({
     queryKey: ['beneficiary', id],
     queryFn: () => api.get(`/beneficiaries/${id}`).then(r => r.data),
     enabled: !!id,
   });
+
+  // The signature sits behind an authorized endpoint, so it can't be used as a plain
+  // <img src> — the bearer token would never be sent. Fetch it as a blob through `api`
+  // and render an object URL, revoking it when it changes or the page unmounts.
+  const { data: signatureBlob } = useQuery({
+    queryKey: ['beneficiary-signature', id],
+    queryFn: () => api.get(`/beneficiaries/${id}/signature`, { responseType: 'blob' })
+      .then(r => r.data),
+    enabled: !!b?.hasSignature,
+    staleTime: Infinity,
+  });
+
+  const signatureSrc = useMemo(
+    () => (signatureBlob ? URL.createObjectURL(signatureBlob) : null),
+    [signatureBlob],
+  );
+  useEffect(() => () => {
+    if (signatureSrc) URL.revokeObjectURL(signatureSrc);
+  }, [signatureSrc]);
+
+  const handleDownloadDoc = async (doc) => {
+    try {
+      const res = await api.get(`/beneficiaries/${id}/documents/${doc.id}/download`, {
+        responseType: 'blob',
+      });
+      downloadBlob(res.data, doc.fileName);
+    } catch (err) {
+      toast.error(err.response?.data?.message ?? 'Could not download the document.');
+    }
+  };
 
   const { data: programs = [] } = useQuery({
     queryKey: ['welfare-programs'],
@@ -140,6 +174,7 @@ export default function BeneficiaryDetailPage() {
     mutationFn: (dataUrl) => api.post(`/beneficiaries/${id}/signature`, { signatureDataUrl: dataUrl }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['beneficiary', id] });
+      qc.invalidateQueries({ queryKey: ['beneficiary-signature', id] });
       toast.success('Signature saved.');
       setCapturingSig(false);
     },
@@ -153,6 +188,33 @@ export default function BeneficiaryDetailPage() {
     }
     signatureMutation.mutate(sigPadRef.current.toDataURL());
   };
+
+  const { data: candidates = [], isFetching: fetchingCandidates } = useQuery({
+    queryKey: ['link-candidates', id, linkSearch],
+    queryFn: () => api.get(`/beneficiaries/${id}/link-candidates`, { params: { search: linkSearch || undefined } }).then(r => r.data),
+    enabled: linkOpen,
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: (userId) => api.put(`/beneficiaries/${id}/citizen/${userId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['beneficiary', id] });
+      toast.success('Citizen account linked.');
+      setLinkOpen(false);
+      setLinkSearch('');
+    },
+    onError: err => toast.error(err.response?.data?.message ?? 'Failed to link account.'),
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: () => api.delete(`/beneficiaries/${id}/citizen`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['beneficiary', id] });
+      toast.success('Citizen account unlinked.');
+      setUnlinkConfirm(false);
+    },
+    onError: err => toast.error(err.response?.data?.message ?? 'Failed to unlink account.'),
+  });
 
   const openEditModal = () => {
     if (!b) return;
@@ -222,7 +284,7 @@ export default function BeneficiaryDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-700">
+            <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-2xl font-bold text-primary-700">
               {b.firstName?.charAt(0)}
             </div>
             <div>
@@ -231,7 +293,7 @@ export default function BeneficiaryDetailPage() {
                 <StatusBadge status={b.status} />
               </div>
               <p className="text-sm text-gray-500 mt-0.5">
-                Client No.: <span className="font-mono font-semibold text-blue-700">{b.clientNumber}</span>
+                Client No.: <span className="font-mono font-semibold text-primary-700">{b.clientNumber}</span>
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 Registered {new Date(b.createdAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -251,7 +313,7 @@ export default function BeneficiaryDetailPage() {
             )}
             {canEdit && (
               <button onClick={openEditModal}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors">
+                className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 transition-colors">
                 <Edit size={16} /> Edit
               </button>
             )}
@@ -296,7 +358,7 @@ export default function BeneficiaryDetailPage() {
           <div className="flex flex-wrap gap-2">
             {b.programs.map(p => (
               <span key={p.programId}
-                className={`px-3 py-1 rounded-full text-sm font-medium ${p.isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                className={`px-3 py-1 rounded-full text-sm font-medium ${p.isActive ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-500'}`}>
                 {p.programName}{!p.isActive && ' (Inactive)'}
               </span>
             ))}
@@ -309,7 +371,7 @@ export default function BeneficiaryDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Recent Assistance</h4>
           <button onClick={() => navigate(`/assistance?beneficiaryId=${id}`)}
-            className="text-xs text-blue-600 hover:underline">View All</button>
+            className="text-xs text-primary-600 hover:underline">View All</button>
         </div>
         {b.recentAssistance?.length > 0 ? (
           <div className="divide-y divide-gray-100">
@@ -338,7 +400,7 @@ export default function BeneficiaryDetailPage() {
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Documents</h4>
           {canEdit && (
             <button onClick={() => setUploadDocOpen(true)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
               <Upload size={14} /> Upload
             </button>
           )}
@@ -352,8 +414,15 @@ export default function BeneficiaryDetailPage() {
                   <p className="text-gray-800">{d.fileName}</p>
                   <p className="text-xs text-gray-400">{d.documentType} · {new Date(d.uploadedAt).toLocaleDateString('en-PH')}</p>
                 </div>
+                <button onClick={() => handleDownloadDoc(d)}
+                  aria-label={`Download ${d.fileName}`}
+                  className="text-gray-400 hover:text-primary-700 transition-colors">
+                  <Download size={15} />
+                </button>
                 {canEdit && (
-                  <button onClick={() => setDeleteDocTarget(d)} className="text-red-400 hover:text-red-600 transition-colors">
+                  <button onClick={() => setDeleteDocTarget(d)}
+                    aria-label={`Delete ${d.fileName}`}
+                    className="text-accent-400 hover:text-accent-600 transition-colors">
                     <Trash2 size={15} />
                   </button>
                 )}
@@ -365,6 +434,57 @@ export default function BeneficiaryDetailPage() {
         )}
       </div>
 
+      {/* Citizen Account link */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+            <Mail size={15} className="text-gray-400" /> Citizen Account
+          </h4>
+          {canEdit && !b.linkedCitizen && (
+            <button onClick={() => setLinkOpen(true)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
+              <UserPlus size={14} /> Link Account
+            </button>
+          )}
+        </div>
+
+        {b.linkedCitizen ? (
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold">
+              {b.linkedCitizen.fullName?.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-900 truncate">{b.linkedCitizen.fullName}</p>
+                {b.linkedCitizen.emailConfirmed ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 shrink-0">
+                    <ShieldCheck size={12} /> Verified
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 shrink-0">
+                    <ShieldAlert size={12} /> Unverified
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 truncate">
+                @{b.linkedCitizen.userName} · {b.linkedCitizen.email}
+              </p>
+            </div>
+            {canEdit && (
+              <button onClick={() => setUnlinkConfirm(true)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-accent-600 border border-accent-200 rounded-lg hover:bg-accent-50 transition-colors">
+                <Unlink size={14} /> Unlink
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">
+            No citizen account is linked. Link one so this beneficiary can view their profile and
+            assistance history in the citizen portal.
+          </p>
+        )}
+      </div>
+
       {/* Signature (for ID issuance) */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -373,8 +493,8 @@ export default function BeneficiaryDetailPage() {
           </h4>
           {canEdit && !capturingSig && (
             <button onClick={() => setCapturingSig(true)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
-              <PenLine size={14} /> {b.signatureUrl ? 'Re-capture' : 'Capture Signature'}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
+              <PenLine size={14} /> {b.hasSignature ? 'Re-capture' : 'Capture Signature'}
             </button>
           )}
         </div>
@@ -386,15 +506,19 @@ export default function BeneficiaryDetailPage() {
               <button type="button" onClick={() => setCapturingSig(false)}
                 className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSaveSignature} disabled={signatureMutation.isPending}
-                className="px-5 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+                className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
                 {signatureMutation.isPending ? 'Saving…' : 'Save Signature'}
               </button>
             </div>
           </div>
-        ) : b.signatureUrl ? (
+        ) : b.hasSignature ? (
           <div className="flex flex-col items-start gap-1">
-            <img src={b.signatureUrl} alt="Beneficiary signature"
-              className="max-h-32 border border-gray-200 rounded-lg bg-white p-2" />
+            {signatureSrc ? (
+              <img src={signatureSrc} alt="Beneficiary signature"
+                className="max-h-32 border border-gray-200 rounded-lg bg-white p-2" />
+            ) : (
+              <div className="h-32 w-64 rounded-lg border border-gray-200 bg-gray-50 animate-pulse" />
+            )}
             <p className="text-xs text-gray-400">On file for ID issuance.</p>
           </div>
         ) : (
@@ -460,7 +584,7 @@ export default function BeneficiaryDetailPage() {
                 {programs.map(p => (
                   <label key={p.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                     <input type="checkbox" value={p.id} {...register('welfareProgramIds')}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600" />
                     {p.name}
                   </label>
                 ))}
@@ -471,7 +595,7 @@ export default function BeneficiaryDetailPage() {
             <button type="button" onClick={() => setEditOpen(false)}
               className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="submit" disabled={editMutation.isPending}
-              className="px-5 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {editMutation.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
@@ -482,13 +606,13 @@ export default function BeneficiaryDetailPage() {
       <Modal isOpen={uploadDocOpen} onClose={() => { setUploadDocOpen(false); setUploadForm({ file: null, documentType: '', description: '' }); }} title="Upload Document" size="sm">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">File <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">File <span className="text-accent-600">*</span></label>
             <input
               type="file"
               ref={fileInputRef}
               accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
               onChange={e => setUploadForm(f => ({ ...f, file: e.target.files?.[0] ?? null }))}
-              className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
             />
             <p className="mt-1 text-xs text-gray-400">PDF, Word, JPEG, PNG — max 10 MB</p>
           </div>
@@ -516,7 +640,7 @@ export default function BeneficiaryDetailPage() {
             <button onClick={() => { setUploadDocOpen(false); setUploadForm({ file: null, documentType: '', description: '' }); }}
               className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={handleUploadDoc} disabled={!uploadForm.file || uploadDocMutation.isPending}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="px-4 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {uploadDocMutation.isPending ? 'Uploading…' : 'Upload'}
             </button>
           </div>
@@ -555,7 +679,7 @@ export default function BeneficiaryDetailPage() {
             <button
               onClick={() => statusMutation.mutate({ status: newStatus, notes: statusNotes || null })}
               disabled={statusMutation.isPending || newStatus === b?.status}
-              className="px-5 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
+              className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60"
             >
               {statusMutation.isPending ? 'Saving…' : 'Update Status'}
             </button>
@@ -572,6 +696,57 @@ export default function BeneficiaryDetailPage() {
         message={`Are you sure you want to delete "${deleteDocTarget?.fileName}"? This cannot be undone.`}
         danger
         loading={deleteDocMutation.isPending}
+      />
+
+      {/* Link Citizen Account Modal */}
+      <Modal isOpen={linkOpen} onClose={() => { setLinkOpen(false); setLinkSearch(''); }} title="Link Citizen Account" size="md">
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500">
+            Link a verified citizen account so this beneficiary can view their records online.
+            Only unlinked citizen accounts are shown.
+          </p>
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input autoFocus placeholder="Search by name, username, or email…" value={linkSearch}
+              onChange={e => setLinkSearch(e.target.value)}
+              className={`${inputCls} pl-9`} />
+          </div>
+          {fetchingCandidates ? (
+            <LoadingSpinner className="py-6" />
+          ) : candidates.length > 0 ? (
+            <ul className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+              {candidates.map(c => (
+                <li key={c.userId} className="py-2.5 flex items-center gap-3 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 truncate">{c.fullName}</p>
+                    <p className="text-xs text-gray-400 truncate">@{c.userName} · {c.email}</p>
+                  </div>
+                  <button
+                    onClick={() => linkMutation.mutate(c.userId)}
+                    disabled={linkMutation.isPending}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 disabled:opacity-60 transition-colors">
+                    Link
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400 py-4 text-center">
+              {linkSearch ? 'No matching unlinked citizen accounts.' : 'No unlinked citizen accounts available.'}
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      {/* Unlink Confirm */}
+      <ConfirmDialog
+        isOpen={unlinkConfirm}
+        onClose={() => setUnlinkConfirm(false)}
+        onConfirm={() => unlinkMutation.mutate()}
+        title="Unlink Citizen Account"
+        message={`Unlink "${b.linkedCitizen?.fullName}" from this beneficiary? They will lose portal access to these records. The citizen account itself is not deleted.`}
+        danger
+        loading={unlinkMutation.isPending}
       />
     </div>
   );
