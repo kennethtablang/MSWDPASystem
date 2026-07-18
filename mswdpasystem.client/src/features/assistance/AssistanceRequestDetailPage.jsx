@@ -18,11 +18,11 @@ const STATUS_ICONS = {
 };
 
 const STATUS_COLORS = {
-  Submitted: 'text-blue-500',
-  UnderReview: 'text-yellow-500',
-  Approved: 'text-green-500',
+  Submitted: 'text-primary-500',
+  UnderReview: 'text-gold-500',
+  Approved: 'text-emerald-500',
   Released: 'text-emerald-500',
-  Denied: 'text-red-500',
+  Denied: 'text-accent-500',
 };
 
 const NEXT_STATUSES = {
@@ -77,7 +77,7 @@ export default function AssistanceRequestDetailPage() {
             <p className="font-mono text-sm text-gray-400 mb-1">{req.requestNumber}</p>
             <h2 className="text-xl font-bold text-gray-900">{req.assistanceType}</h2>
             {req.welfareProgram && (
-              <span className="inline-flex mt-1 px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-xs">{req.welfareProgram}</span>
+              <span className="inline-flex mt-1 px-2 py-0.5 rounded bg-primary-50 text-primary-700 text-xs">{req.welfareProgram}</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export default function AssistanceRequestDetailPage() {
             {isHC && nextStatuses.length > 0 && (
               <button
                 onClick={() => { setForm({ newStatus: nextStatuses[0], notes: '', denialReason: '' }); setModal(true); }}
-                className="px-3 py-1.5 text-sm bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors"
+                className="px-3 py-1.5 text-sm bg-primary-700 text-white rounded-lg hover:bg-primary-800 transition-colors"
               >
                 Update Status
               </button>
@@ -111,7 +111,7 @@ export default function AssistanceRequestDetailPage() {
 
         <button
           onClick={() => navigate(`/beneficiaries/${req.beneficiaryId}`)}
-          className="mt-4 text-sm text-blue-600 hover:underline"
+          className="mt-4 text-sm text-primary-600 hover:underline"
         >
           View Beneficiary Profile →
         </button>
@@ -148,7 +148,7 @@ export default function AssistanceRequestDetailPage() {
             <select
               value={form.newStatus}
               onChange={e => setForm(f => ({ ...f, newStatus: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {nextStatuses.map(s => <option key={s} value={s}>{s === 'UnderReview' ? 'Under Review' : s}</option>)}
             </select>
@@ -159,19 +159,19 @@ export default function AssistanceRequestDetailPage() {
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
           </div>
           {form.newStatus === 'Denied' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Denial Reason <span className="text-red-500">*</span>
+                Denial Reason <span className="text-accent-500">*</span>
               </label>
               <textarea
                 value={form.denialReason}
                 onChange={e => setForm(f => ({ ...f, denialReason: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
             </div>
           )}
@@ -181,7 +181,7 @@ export default function AssistanceRequestDetailPage() {
             <button
               onClick={() => updateMutation.mutate({ newStatus: form.newStatus, notes: form.notes || null, denialReason: form.denialReason || null })}
               disabled={updateMutation.isPending || (form.newStatus === 'Denied' && !form.denialReason)}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
+              className="px-4 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60"
             >
               {updateMutation.isPending ? 'Updating…' : 'Confirm'}
             </button>

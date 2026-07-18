@@ -16,16 +16,16 @@ const schema = z.object({
   purpose: z.string().max(1000).optional().or(z.literal('')),
 });
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 function Field({ label, error, children, required }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        {label}{required && <span className="text-accent-500 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-accent-600">{error}</p>}
     </div>
   );
 }
@@ -89,13 +89,13 @@ export default function CreateAssistanceRequestPage() {
           {/* Beneficiary search */}
           <Field label="Beneficiary" error={errors.beneficiaryId?.message} required>
             {selectedBeneficiary ? (
-              <div className="flex items-center justify-between px-3 py-2 border border-blue-300 rounded-lg bg-blue-50">
+              <div className="flex items-center justify-between px-3 py-2 border border-primary-300 rounded-lg bg-primary-50">
                 <div>
                   <p className="text-sm font-medium text-gray-800">{selectedBeneficiary.fullName}</p>
                   <p className="text-xs text-gray-500">{selectedBeneficiary.clientNumber}</p>
                 </div>
                 <button type="button" onClick={() => { setSelectedBeneficiary(null); setValue('beneficiaryId', ''); setSearch(''); }}
-                  className="text-xs text-blue-600 hover:underline">Change</button>
+                  className="text-xs text-primary-600 hover:underline">Change</button>
               </div>
             ) : (
               <div className="relative">
@@ -105,7 +105,7 @@ export default function CreateAssistanceRequestPage() {
                   placeholder="Search by name or client number…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {beneficiaries?.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -153,7 +153,7 @@ export default function CreateAssistanceRequestPage() {
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-5 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {mutation.isPending ? 'Submitting…' : 'Submit Request'}
             </button>
           </div>

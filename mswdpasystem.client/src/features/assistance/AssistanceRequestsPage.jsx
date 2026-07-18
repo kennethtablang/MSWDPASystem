@@ -67,7 +67,7 @@ export default function AssistanceRequestsPage() {
       render: (id, row) => row.status === 'Submitted' || row.status === 'UnderReview' ? (
         <button
           onClick={e => { e.stopPropagation(); setStatusModal(row); setStatusForm({ newStatus: 'Approved', notes: '', denialReason: '' }); }}
-          className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
+          className="text-xs px-2.5 py-1 bg-primary-50 text-primary-700 rounded hover:bg-primary-100 transition-colors"
         >
           Update Status
         </button>
@@ -80,12 +80,12 @@ export default function AssistanceRequestsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Assistance Requests</h3>
-          {beneficiaryId && <p className="text-sm text-blue-600 mt-0.5">Filtered by beneficiary</p>}
+          {beneficiaryId && <p className="text-sm text-primary-600 mt-0.5">Filtered by beneficiary</p>}
         </div>
         {isStaff && (
           <button
             onClick={() => navigate('/assistance/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-700 text-white text-sm font-medium rounded-lg hover:bg-primary-800 transition-colors"
           >
             <Plus size={16} /> New Request
           </button>
@@ -100,7 +100,7 @@ export default function AssistanceRequestsPage() {
             onClick={() => { setTab(t); setPage(1); }}
             className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
               tab === t
-                ? 'bg-blue-700 text-white'
+                ? 'bg-primary-700 text-white'
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -140,7 +140,7 @@ export default function AssistanceRequestsPage() {
             <select
               value={statusForm.newStatus}
               onChange={e => setStatusForm(f => ({ ...f, newStatus: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="UnderReview">Under Review</option>
               <option value="Approved">Approved</option>
@@ -154,17 +154,17 @@ export default function AssistanceRequestsPage() {
               value={statusForm.notes}
               onChange={e => setStatusForm(f => ({ ...f, notes: e.target.value }))}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
           </div>
           {statusForm.newStatus === 'Denied' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Denial Reason <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Denial Reason <span className="text-accent-500">*</span></label>
               <textarea
                 value={statusForm.denialReason}
                 onChange={e => setStatusForm(f => ({ ...f, denialReason: e.target.value }))}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
               />
             </div>
           )}
@@ -181,7 +181,7 @@ export default function AssistanceRequestsPage() {
                 denialReason: statusForm.denialReason || null,
               })}
               disabled={updateStatusMutation.isPending || (statusForm.newStatus === 'Denied' && !statusForm.denialReason)}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60"
+              className="px-4 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60"
             >
               {updateStatusMutation.isPending ? 'Updating…' : 'Update Status'}
             </button>
