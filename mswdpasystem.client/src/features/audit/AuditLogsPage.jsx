@@ -10,14 +10,14 @@ const ACTION_OPTIONS = [
 ];
 
 const ACTION_BADGE = {
-  Create: 'bg-green-100 text-green-700',
-  Update: 'bg-blue-100 text-blue-700',
-  Delete: 'bg-red-100 text-red-700',
-  Login: 'bg-indigo-100 text-indigo-700',
+  Create: 'bg-emerald-100 text-emerald-700',
+  Update: 'bg-primary-100 text-primary-700',
+  Delete: 'bg-accent-100 text-accent-700',
+  Login: 'bg-primary-100 text-primary-700',
   Logout: 'bg-gray-100 text-gray-500',
   View: 'bg-gray-100 text-gray-500',
   QrScan: 'bg-cyan-100 text-cyan-700',
-  StatusChange: 'bg-yellow-100 text-yellow-700',
+  StatusChange: 'bg-gold-100 text-gold-700',
   DocumentUpload: 'bg-purple-100 text-purple-700',
   DuplicateResolution: 'bg-orange-100 text-orange-700',
 };
@@ -71,20 +71,20 @@ export default function AuditLogsPage() {
           type="text" placeholder="Search by user or description…"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="flex-1 min-w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-48 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         <select
           value={action}
           onChange={e => { setAction(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           {ACTION_OPTIONS.map(a => <option key={a} value={a}>{a || 'All Actions'}</option>)}
         </select>
         <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           placeholder="From" title="Date from" />
         <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           placeholder="To" title="Date to" />
       </div>
 
