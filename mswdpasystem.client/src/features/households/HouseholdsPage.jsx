@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,9 +8,13 @@ import { toast } from 'sonner';
 import { HousePlus, Users } from 'lucide-react';
 import api from '../../shared/utils/api';
 import { useAuth } from '../../shared/context/AuthContext';
+import { Card } from '../../shared/components/ui';
+import Button from '../../shared/components/ui/Button';
+import FormField, { Input } from '../../shared/components/ui/FormField';
 import DataTable from '../../shared/components/DataTable';
 import Modal from '../../shared/components/Modal';
 import Pagination from '../../shared/components/Pagination';
+import usePreferences from '../../shared/hooks/usePreferences';
 
 const schema = z.object({
   headOfHouseholdName: z.string().max(150).optional().or(z.literal('')),
@@ -36,15 +41,17 @@ const columns = [
 
 export default function HouseholdsPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const canCreate = user?.role === 'MSWDStaff' || user?.role === 'Admin';
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const pageSize = usePreferences().defaultPageSize;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['households', page, search],
-    queryFn: () => api.get('/households', { params: { page, pageSize: 20, search: search || undefined } }).then(r => r.data),
+    queryKey: ['households', page, search, pageSize],
+    queryFn: () => api.get('/households', { params: { page, pageSize, search: search || undefined } }).then(r => r.data),
   });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
@@ -74,78 +81,62 @@ export default function HouseholdsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Household-level profiling and composition</p>
         </div>
         {canCreate && (
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
-          >
+          <Button variant="primary" onClick={() => setModalOpen(true)}>
             <HousePlus size={16} /> New Household
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="mb-4">
-        <input
+        <Input
           type="text"
           placeholder="Search by household no., barangay, or head of household…"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="w-full sm:w-96 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-96"
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <Card className="p-4">
         <DataTable
           columns={columns}
           data={data?.items ?? []}
           loading={isLoading}
           keyField="id"
           emptyMessage="No households found."
+          onRowClick={(row) => navigate(`/households/${row.id}`)}
         />
         <Pagination
           page={page}
           totalPages={data?.totalPages ?? 1}
           totalCount={data?.totalCount ?? 0}
-          pageSize={20}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
-      </div>
+      </Card>
 
       <Modal isOpen={modalOpen} onClose={() => { setModalOpen(false); reset(); }} title="New Household" size="md">
         <form onSubmit={handleSubmit(d => createMutation.mutate(d))} className="space-y-4">
-          <Field label="Head of Household" error={errors.headOfHouseholdName?.message}>
-            <input {...register('headOfHouseholdName')} className={inputCls} placeholder="Juan Dela Cruz (optional)" />
-          </Field>
-          <Field label="Barangay" error={errors.barangay?.message}>
-            <input {...register('barangay')} className={inputCls} placeholder="Poblacion" />
-          </Field>
-          <Field label="Address" error={errors.address?.message}>
-            <input {...register('address')} className={inputCls} placeholder="Purok 1, Poblacion, Caba, La Union" />
-          </Field>
+          <FormField label="Head of Household" error={errors.headOfHouseholdName?.message}>
+            <Input {...register('headOfHouseholdName')} placeholder="Juan Dela Cruz (optional)" error={errors.headOfHouseholdName?.message} />
+          </FormField>
+          <FormField label="Barangay" required error={errors.barangay?.message}>
+            <Input {...register('barangay')} placeholder="Poblacion" error={errors.barangay?.message} />
+          </FormField>
+          <FormField label="Address" required error={errors.address?.message}>
+            <Input {...register('address')} placeholder="Purok 1, Poblacion, Caba, La Union" error={errors.address?.message} />
+          </FormField>
           <p className="text-xs text-gray-500">A household number (HH-{new Date().getFullYear()}-####) is generated automatically.</p>
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={() => { setModalOpen(false); reset(); }}
-              className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <Button type="button" variant="outline" onClick={() => { setModalOpen(false); reset(); }}>
               Cancel
-            </button>
-            <button type="submit" disabled={createMutation.isPending}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+            </Button>
+            <Button type="submit" variant="primary" loading={createMutation.isPending}>
               {createMutation.isPending ? 'Creating…' : 'Create Household'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
-    </div>
-  );
-}
-
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-
-function Field({ label, error, children }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
