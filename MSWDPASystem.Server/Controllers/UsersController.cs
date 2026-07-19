@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MSWDPASystem.Server.Features.Users.CreateUser;
+using MSWDPASystem.Server.Features.Users.DeleteUser;
 using MSWDPASystem.Server.Features.Users.GetUsers;
 using MSWDPASystem.Server.Features.Users.UpdateUser;
 
@@ -33,6 +34,16 @@ public class UsersController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(new UpdateUserCommand(id, body.FullName, body.Email, body.Role, body.IsActive), ct);
         if (!result.IsSuccess) return BadRequest(new { message = result.Error });
         return Ok(result.Data);
+    }
+
+    // FR-1.4: delete a user account. Refused when the account carries system
+    // activity, in which case deactivation is the correct action.
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteUser(string id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeleteUserCommand(id), ct);
+        if (!result.IsSuccess) return BadRequest(new { message = result.Error });
+        return Ok(new { message = "User account deleted." });
     }
 }
 
