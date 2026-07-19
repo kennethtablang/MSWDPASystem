@@ -4,6 +4,7 @@ using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
 using MSWDPASystem.Server.Domain.Enums;
+using MSWDPASystem.Server.Features.Account.GetMyAccount;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Features.Beneficiaries.RegisterBeneficiary;
@@ -114,6 +115,35 @@ public class RegisterBeneficiaryCommandHandler(
                 DuplicateBeneficiaryId = newBeneficiary.Id,
                 FlaggedBySystem = true,
                 Status = DuplicateFlagStatus.Pending
+            });
+        }
+
+        // Tell the people who can resolve flags (per DuplicateFlagsController this
+        // is Admin and HeadCoordinator), except whoever just did the registering —
+        // they are looking at the flag on screen already.
+        var reviewers = await (
+                from ur in context.UserRoles
+                join role in context.Roles on ur.RoleId equals role.Id
+                join user in context.Users on ur.UserId equals user.Id
+                where (role.Name == "Admin" || role.Name == "HeadCoordinator") &&
+                      user.Id != currentUser.UserId
+                select new { user.Id, user.Preferences })
+            .Distinct()
+            .ToListAsync(ct);
+
+        foreach (var reviewer in reviewers)
+        {
+            if (!GetMyAccountQueryHandler.ParsePreferences(reviewer.Preferences).NotifyOnDuplicateFlag)
+                continue;
+
+            context.Notifications.Add(new Notification
+            {
+                RecipientUserId = reviewer.Id,
+                Title = "Possible duplicate registration",
+                Message = $"'{newBeneficiary.FullName}' ({newBeneficiary.ClientNumber}) matches an existing record and needs review.",
+                Type = NotificationType.DuplicateFlag,
+                RelatedEntityType = "Beneficiary",
+                RelatedEntityId = newBeneficiary.Id.ToString()
             });
         }
 
