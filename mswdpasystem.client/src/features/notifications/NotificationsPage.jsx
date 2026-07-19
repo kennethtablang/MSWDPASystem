@@ -6,10 +6,10 @@ import api from '../../shared/utils/api';
 import LoadingSpinner from '../../shared/components/LoadingSpinner';
 
 const TYPE_BADGE = {
-  AssistanceStatusChange: 'bg-blue-100 text-blue-700',
+  AssistanceStatusChange: 'bg-primary-100 text-primary-700',
   QrScanConfirmation: 'bg-cyan-100 text-cyan-700',
-  DuplicateFlag: 'bg-yellow-100 text-yellow-700',
-  SystemAlert: 'bg-red-100 text-red-700',
+  DuplicateFlag: 'bg-gold-100 text-gold-700',
+  SystemAlert: 'bg-accent-100 text-accent-700',
   NewMessage: 'bg-purple-100 text-purple-700',
 };
 
@@ -53,14 +53,14 @@ export default function NotificationsPage() {
           <button
             onClick={() => markReadMutation.mutate(null)}
             disabled={markReadMutation.isPending}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors"
           >
             <Check size={15} /> Mark all read
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 overflow-hidden">
         {isLoading ? (
           <LoadingSpinner className="py-16" />
         ) : notifications.length === 0 ? (
@@ -74,9 +74,9 @@ export default function NotificationsPage() {
               <button
                 key={n.id}
                 onClick={() => handleClick(n)}
-                className={`w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-blue-50' : ''}`}
+                className={`w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors flex items-start gap-3 ${!n.isRead ? 'bg-primary-50' : ''}`}
               >
-                {!n.isRead && <span className="mt-2 w-2 h-2 bg-blue-500 rounded-full shrink-0" />}
+                {!n.isRead && <span className="mt-2 w-2 h-2 bg-primary-500 rounded-full shrink-0" />}
                 <div className={`flex-1 ${n.isRead ? 'ml-5' : ''}`}>
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-sm font-semibold text-gray-900">{n.title}</p>
@@ -92,7 +92,7 @@ export default function NotificationsPage() {
                 {!n.isRead && (
                   <button
                     onClick={e => { e.stopPropagation(); markReadMutation.mutate([n.id]); }}
-                    className="shrink-0 text-xs text-blue-600 hover:underline mt-1"
+                    className="shrink-0 text-xs text-primary-600 hover:underline mt-1"
                   >
                     Mark read
                   </button>
