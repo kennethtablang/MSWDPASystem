@@ -45,7 +45,11 @@ public class RefreshTokenCommandHandler(
             FullName: user.FullName,
             Email: user.Email ?? string.Empty,
             Role: roles.FirstOrDefault() ?? string.Empty,
-            AllowedModules: allowedModules
+            AllowedModules: allowedModules,
+            // Carried on refresh too, so a preference changed on another device
+            // reaches this session without a full sign-out.
+            Preferences: Features.Account.GetMyAccount.GetMyAccountQueryHandler
+                .ParsePreferences(user.Preferences)
         ));
     }
 }
