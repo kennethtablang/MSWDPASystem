@@ -4,4 +4,5 @@
     <Deploy />
   </Project>
   <Project Path="MSWDPASystem.Server/MSWDPASystem.Server.csproj" />
+  <Project Path="MSWDPASystem.Server.Tests/MSWDPASystem.Server.Tests.csproj" />
 </Solution>
