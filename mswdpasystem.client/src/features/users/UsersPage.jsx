@@ -4,12 +4,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Trash2, AlertTriangle } from 'lucide-react';
 import api from '../../shared/utils/api';
 import DataTable from '../../shared/components/DataTable';
 import Modal from '../../shared/components/Modal';
 import StatusBadge from '../../shared/components/StatusBadge';
 import Pagination from '../../shared/components/Pagination';
+import usePreferences from '../../shared/hooks/usePreferences';
 
 const schema = z.object({
   userName: z.string().min(3, 'Minimum 3 characters'),
@@ -28,7 +29,7 @@ const columns = [
   { key: 'userName', header: 'Username' },
   { key: 'email', header: 'Email' },
   { key: 'role', header: 'Role', render: v => (
-    <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{v}</span>
+    <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">{v}</span>
   )},
   { key: 'isActive', header: 'Status', render: v => (
     <StatusBadge status={v ? 'Active' : 'Inactive'} />
@@ -43,10 +44,12 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const pageSize = usePreferences().defaultPageSize;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, search],
-    queryFn: () => api.get('/users', { params: { page, pageSize: 20, search: search || undefined } }).then(r => r.data),
+    queryKey: ['users', page, search, pageSize],
+    queryFn: () => api.get('/users', { params: { page, pageSize, search: search || undefined } }).then(r => r.data),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
@@ -74,21 +77,43 @@ export default function UsersPage() {
     onError: err => toast.error(err.response?.data?.message ?? 'Update failed.'),
   });
 
+  // FR-1.4: the server refuses to delete an account that carries system activity
+  // and explains why, so the error message is surfaced verbatim.
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/users/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User account deleted.');
+      setDeleteTarget(null);
+    },
+    onError: (err) => toast.error(err.response?.data?.message ?? 'Delete failed.', { duration: 8000 }),
+  });
+
   const columnsWithActions = [
     ...columns,
     {
       key: 'id', header: 'Actions',
       render: (id, row) => (
-        <button
-          onClick={e => { e.stopPropagation(); toggleMutation.mutate({ id, fullName: row.fullName, email: row.email, role: row.role, isActive: !row.isActive }); }}
-          className={`text-xs font-medium px-2.5 py-1 rounded transition-colors ${
-            row.isActive
-              ? 'bg-red-50 text-red-600 hover:bg-red-100'
-              : 'bg-green-50 text-green-700 hover:bg-green-100'
-          }`}
-        >
-          {row.isActive ? 'Deactivate' : 'Activate'}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={e => { e.stopPropagation(); toggleMutation.mutate({ id, fullName: row.fullName, email: row.email, role: row.role, isActive: !row.isActive }); }}
+            className={`text-xs font-medium px-2.5 py-1 rounded transition-colors ${
+              row.isActive
+                ? 'bg-accent-50 text-accent-600 hover:bg-accent-100'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            {row.isActive ? 'Deactivate' : 'Activate'}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setDeleteTarget(row); }}
+            aria-label={`Delete ${row.fullName}`}
+            title="Delete account"
+            className="rounded p-1 text-gray-400 transition-colors hover:bg-accent-50 hover:text-accent-600"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       )
     }
   ];
@@ -102,7 +127,7 @@ export default function UsersPage() {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white text-sm font-medium rounded-lg hover:bg-blue-800 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-700 text-white text-sm font-medium rounded-lg hover:bg-primary-800 transition-colors"
         >
           <UserPlus size={16} /> Add User
         </button>
@@ -114,11 +139,11 @@ export default function UsersPage() {
           placeholder="Search by name, username, or email…"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-4">
         <DataTable
           columns={columnsWithActions}
           data={data?.items ?? []}
@@ -130,7 +155,7 @@ export default function UsersPage() {
           page={page}
           totalPages={data?.totalPages ?? 1}
           totalCount={data?.totalCount ?? 0}
-          pageSize={20}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       </div>
@@ -162,24 +187,82 @@ export default function UsersPage() {
               Cancel
             </button>
             <button type="submit" disabled={isSubmitting || createMutation.isPending}
-              className="px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="px-4 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {createMutation.isPending ? 'Creating…' : 'Create User'}
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* FR-1.4 confirmation. Deactivation is presented as the preferred action
+          because it is what the office actually wants in almost every case. */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete user account"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex gap-3 rounded-lg border border-accent-200 bg-accent-50 p-3">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0 text-accent-600" />
+            <p className="text-sm text-accent-800">
+              This permanently removes <strong>{deleteTarget?.fullName}</strong> ({deleteTarget?.userName}).
+              It cannot be undone.
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            Accounts that have registered beneficiaries, decided requests, sent messages or
+            produced audit entries <strong>cannot</strong> be deleted — the audit trail would
+            lose its subject. For anyone who has worked in the system, deactivate instead.
+          </p>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            {deleteTarget?.isActive && (
+              <button
+                onClick={() => {
+                  toggleMutation.mutate({
+                    id: deleteTarget.id,
+                    fullName: deleteTarget.fullName,
+                    email: deleteTarget.email,
+                    role: deleteTarget.role,
+                    isActive: false,
+                  });
+                  setDeleteTarget(null);
+                }}
+                className="rounded-lg bg-primary-700 px-4 py-2 text-sm text-white hover:bg-primary-800"
+              >
+                Deactivate instead
+              </button>
+            )}
+            <button
+              onClick={() => deleteMutation.mutate(deleteTarget.id)}
+              disabled={deleteMutation.isPending}
+              className="rounded-lg bg-accent-600 px-4 py-2 text-sm text-white hover:bg-accent-700 disabled:opacity-60"
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete permanently'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 function Field({ label, error, children }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-accent-600">{error}</p>}
     </div>
   );
 }
