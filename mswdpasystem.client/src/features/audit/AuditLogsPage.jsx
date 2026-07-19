@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../shared/utils/api';
 import DataTable from '../../shared/components/DataTable';
 import Pagination from '../../shared/components/Pagination';
+import usePreferences from '../../shared/hooks/usePreferences';
 
 const ACTION_OPTIONS = [
   '', 'Create', 'Update', 'Delete', 'Login', 'Logout', 'View',
@@ -46,11 +47,13 @@ export default function AuditLogsPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  const pageSize = usePreferences().defaultPageSize;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', page, search, action, dateFrom, dateTo],
+    queryKey: ['audit-logs', page, search, action, dateFrom, dateTo, pageSize],
     queryFn: () => api.get('/audit-logs', {
       params: {
-        page, pageSize: 30,
+        page, pageSize,
         search: search || undefined,
         action: action || undefined,
         dateFrom: dateFrom || undefined,
@@ -88,7 +91,7 @@ export default function AuditLogsPage() {
           placeholder="To" title="Date to" />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-4">
         <DataTable
           columns={columns}
           data={data?.items ?? []}
@@ -100,7 +103,7 @@ export default function AuditLogsPage() {
           page={page}
           totalPages={data?.totalPages ?? 1}
           totalCount={data?.totalCount ?? 0}
-          pageSize={30}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       </div>
