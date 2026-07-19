@@ -5,6 +5,7 @@ using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
 using MSWDPASystem.Server.Domain.Enums;
+using MSWDPASystem.Server.Features.Account.GetMyAccount;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Features.Assistance.UpdateStatus;
@@ -56,8 +57,15 @@ public class UpdateRequestStatusCommandHandler(
             ChangedAt = now
         });
 
-        // Notify the submitter
-        if (assistanceRequest.SubmittedByUserId != null)
+        // Notify the submitter, unless they turned assistance-status alerts off.
+        var submitterPrefsJson = assistanceRequest.SubmittedByUserId == null
+            ? null
+            : await context.Users
+                .Where(u => u.Id == assistanceRequest.SubmittedByUserId)
+                .Select(u => u.Preferences)
+                .FirstOrDefaultAsync(cancellationToken);
+        if (assistanceRequest.SubmittedByUserId != null &&
+            GetMyAccountQueryHandler.ParsePreferences(submitterPrefsJson).NotifyOnAssistanceStatus)
         {
             context.Notifications.Add(new Notification
             {
