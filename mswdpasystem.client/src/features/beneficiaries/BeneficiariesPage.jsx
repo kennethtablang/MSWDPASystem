@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { UserPlus, Search } from 'lucide-react';
 import { useAuth } from '../../shared/context/AuthContext';
+import usePreferences from '../../shared/hooks/usePreferences';
 import api from '../../shared/utils/api';
 import DataTable from '../../shared/components/DataTable';
 import StatusBadge from '../../shared/components/StatusBadge';
@@ -27,14 +28,17 @@ export default function BeneficiariesPage() {
       return next;
     }, { replace: true });
   };
-  const [barangay, setBarangay] = useState('');
+  const prefs = usePreferences();
+  const pageSize = prefs.defaultPageSize;
+  // Staff assigned to one barangay start filtered to it; still changeable here.
+  const [barangay, setBarangay] = useState(prefs.defaultBarangay ?? '');
   const [status, setStatus] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['beneficiaries', page, search, barangay, status],
+    queryKey: ['beneficiaries', page, search, barangay, status, pageSize],
     queryFn: () => api.get('/beneficiaries', {
       params: {
-        page, pageSize: 20,
+        page, pageSize,
         search: search || undefined,
         barangay: barangay || undefined,
         status: status || undefined,
@@ -103,7 +107,7 @@ export default function BeneficiariesPage() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-4">
         <DataTable
           columns={columns}
           data={data?.items ?? []}
@@ -117,7 +121,7 @@ export default function BeneficiariesPage() {
           page={page}
           totalPages={data?.totalPages ?? 1}
           totalCount={data?.totalCount ?? 0}
-          pageSize={20}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       </div>

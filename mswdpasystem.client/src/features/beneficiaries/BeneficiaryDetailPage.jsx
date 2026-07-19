@@ -5,8 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, QrCode, FileText, Upload, Trash2, ShieldCheck, PenLine, UserPlus, Unlink, Search, Mail, ShieldAlert, Download } from 'lucide-react';
+import { ArrowLeft, Edit, QrCode, FileText, Upload, Trash2, ShieldCheck, PenLine, UserPlus, Unlink, Search, Mail, ShieldAlert, Download, FilePlus2 } from 'lucide-react';
 import { useAuth } from '../../shared/context/AuthContext';
+import Sensitive from '../../shared/components/Sensitive';
 import api from '../../shared/utils/api';
 import { downloadBlob } from '../../shared/utils/download';
 import StatusBadge from '../../shared/components/StatusBadge';
@@ -274,14 +275,14 @@ export default function BeneficiaryDetailPage() {
   const civilLabel = typeof b.civilStatus === 'number' ? CIVIL_LABELS[b.civilStatus] : b.civilStatus;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    <div className="max-w-6xl space-y-5">
       <button onClick={() => navigate('/beneficiaries')}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
         <ArrowLeft size={16} /> Back to Beneficiaries
       </button>
 
       {/* Profile Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-2xl font-bold text-primary-700">
@@ -329,7 +330,7 @@ export default function BeneficiaryDetailPage() {
       </div>
 
       {/* Info Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Personal Information</h4>
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 text-sm">
           {[
@@ -338,10 +339,16 @@ export default function BeneficiaryDetailPage() {
             ['Civil Status', civilLabel],
             ['Barangay', b.barangay],
             ['Address', b.address],
-            ['Contact No.', b.contactNumber ?? '—'],
-            ['Email', b.emailAddress ?? '—'],
+            // Contact details and income are masked when the operator has that
+            // setting on — see Settings > Privacy.
+            ['Contact No.', <Sensitive value={b.contactNumber} />],
+            ['Email', <Sensitive value={b.emailAddress} />],
             ['Occupation', b.occupation ?? '—'],
-            ['Monthly Income', b.monthlyIncome != null ? `₱${Number(b.monthlyIncome).toLocaleString()}` : '—'],
+            ['Monthly Income', (
+              <Sensitive
+                value={b.monthlyIncome != null ? `₱${Number(b.monthlyIncome).toLocaleString()}` : null}
+              />
+            )],
           ].map(([label, value]) => (
             <div key={label}>
               <dt className="text-xs text-gray-400 font-medium">{label}</dt>
@@ -353,7 +360,7 @@ export default function BeneficiaryDetailPage() {
 
       {/* Programs */}
       {b.programs?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Enrolled Programs</h4>
           <div className="flex flex-wrap gap-2">
             {b.programs.map(p => (
@@ -367,11 +374,23 @@ export default function BeneficiaryDetailPage() {
       )}
 
       {/* Recent Assistance */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4 gap-3">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Recent Assistance</h4>
-          <button onClick={() => navigate(`/assistance?beneficiaryId=${id}`)}
-            className="text-xs text-primary-600 hover:underline">View All</button>
+          <div className="flex items-center gap-3 shrink-0">
+            {canEdit && (
+              // Carries the client through, so staff do not search again for the
+              // person whose profile they are already looking at.
+              <button
+                onClick={() => navigate(`/assistance/new?beneficiaryId=${id}`)}
+                className="flex items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100"
+              >
+                <FilePlus2 size={13} /> File request
+              </button>
+            )}
+            <button onClick={() => navigate(`/assistance?beneficiaryId=${id}`)}
+              className="text-xs text-primary-600 hover:underline">View All</button>
+          </div>
         </div>
         {b.recentAssistance?.length > 0 ? (
           <div className="divide-y divide-gray-100">
@@ -395,7 +414,7 @@ export default function BeneficiaryDetailPage() {
       </div>
 
       {/* Documents */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Documents</h4>
           {canEdit && (
@@ -435,7 +454,7 @@ export default function BeneficiaryDetailPage() {
       </div>
 
       {/* Citizen Account link */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
             <Mail size={15} className="text-gray-400" /> Citizen Account
@@ -486,7 +505,7 @@ export default function BeneficiaryDetailPage() {
       </div>
 
       {/* Signature (for ID issuance) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
             <PenLine size={15} className="text-gray-400" /> Signature
@@ -515,7 +534,7 @@ export default function BeneficiaryDetailPage() {
           <div className="flex flex-col items-start gap-1">
             {signatureSrc ? (
               <img src={signatureSrc} alt="Beneficiary signature"
-                className="max-h-32 border border-gray-200 rounded-lg bg-white p-2" />
+                className="max-h-32 border border-gray-200 rounded-lg bg-white dark:bg-gray-100 p-2" />
             ) : (
               <div className="h-32 w-64 rounded-lg border border-gray-200 bg-gray-50 animate-pulse" />
             )}
