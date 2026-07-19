@@ -1,9 +1,238 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
 
+/*
+ * Enables the `dark:` variant against our own attribute rather than the OS media
+ * query, because the theme is a saved user preference that can override the device.
+ *
+ * Most of the dark theme is handled by remapping tokens further down — that covers
+ * the great majority of the interface with no per-component work. `dark:` is for
+ * the cases a single token cannot serve: where the same colour step is used both
+ * as a background and as text, and the two want to move in opposite directions.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * MSWD Caba design tokens.
+ * Brand scales are anchored on the official Philippine flag colors shared by
+ * the La Union and Caba seals: blue #0038A8 (primary-700), red #CE1126
+ * (accent-600), gold #FCD116 (gold-400). Emerald (community welfare/growth)
+ * uses Tailwind's built-in emerald scale.
+ */
 @theme {
-  --color-primary: #1e40af;
-  --color-primary-dark: #1e3a8a;
-  --color-primary-light: #3b82f6;
-  --color-secondary: #0f766e;
-  --color-accent: #f59e0b;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+
+  --color-primary-50: #eef4ff;
+  --color-primary-100: #dce7ff;
+  --color-primary-200: #c0d4ff;
+  --color-primary-300: #94b5ff;
+  --color-primary-400: #618cff;
+  --color-primary-500: #3a63f8;
+  --color-primary-600: #1f47e0;
+  --color-primary-700: #0038a8;
+  --color-primary-800: #072f88;
+  --color-primary-900: #0c296b;
+  --color-primary-950: #081a45;
+
+  --color-accent-50: #fef2f3;
+  --color-accent-100: #fde3e5;
+  --color-accent-200: #fbccd0;
+  --color-accent-300: #f7a3ab;
+  --color-accent-400: #f1707d;
+  --color-accent-500: #e64256;
+  --color-accent-600: #ce1126;
+  --color-accent-700: #ad0e23;
+  --color-accent-800: #901023;
+  --color-accent-900: #7b1222;
+  --color-accent-950: #43060f;
+
+  --color-gold-50: #fefbe8;
+  --color-gold-100: #fff6c2;
+  --color-gold-200: #ffec89;
+  --color-gold-300: #ffdd45;
+  --color-gold-400: #fcd116;
+  --color-gold-500: #ecb906;
+  --color-gold-600: #cc9002;
+  --color-gold-700: #a36706;
+  --color-gold-800: #86500d;
+  --color-gold-900: #724211;
+  --color-gold-950: #432305;
+
+  --shadow-card: 0 1px 2px rgb(8 26 69 / 0.06), 0 4px 12px rgb(8 26 69 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(8 26 69 / 0.08), 0 10px 28px rgb(8 26 69 / 0.12);
+}
+
+/* Sweep line inside the QR scanner reticle (FR-3.3). */
+@keyframes qr-sweep {
+  0%   { transform: translateY(0); opacity: 0.35; }
+  50%  { transform: translateY(14rem); opacity: 1; }
+  100% { transform: translateY(0); opacity: 0.35; }
+}
+
+@layer base {
+  /* Accessibility font scaling — cycled by the header A/A+/A++ control. */
+  html[data-font-scale="lg"] {
+    font-size: 112.5%;
+  }
+
+  html[data-font-scale="xl"] {
+    font-size: 125%;
+  }
+
+  /*
+   * Dark theme.
+   *
+   * Implemented by remapping colour tokens rather than restyling components, so
+   * every existing utility carries over. Three rules govern the mapping:
+   *
+   *  1. Neutrals invert: gray-50 (lightest) becomes the darkest, and so on.
+   *  2. The *tints* of every accent scale (50/100/200) are used as subtle panel
+   *     backgrounds, so they become dark, low-chroma versions of the same hue.
+   *     Their matching text steps (600–900) become bright versions.
+   *  3. Steps the dark chrome already depends on are left alone. primary-800/900/950
+   *     are the sidebar's own background, border and active state — lightening them
+   *     turned the sidebar inside out.
+   *
+   * primary-700 is deliberately a compromise: it is both `text-primary-700` on
+   * links (90 uses) and `bg-primary-700` behind white button text (36 uses), so it
+   * has to stay legible as text on a dark ground while keeping white readable on
+   * top of it. A single token cannot be optimal for both; this sits between.
+   */
+  html[data-theme="dark"] {
+    /* Neutrals — inverted. */
+    --color-gray-50: #12161f;
+    --color-gray-100: #1a1f2b;
+    --color-gray-200: #262d3d;
+    --color-gray-300: #38415a;
+    --color-gray-400: #6b768f;
+    --color-gray-500: #8d97ad;
+    --color-gray-600: #aab3c5;
+    --color-gray-700: #c6cdda;
+    --color-gray-800: #dee3ec;
+    --color-gray-900: #f0f3f8;
+    --color-gray-950: #f8fafc;
+
+    /*
+     * `--color-white` is deliberately NOT overridden. It drives `bg-white` (card
+     * surfaces, which should darken) *and* `text-white` (labels on coloured
+     * buttons, which must stay white). Darkening the token turned every button
+     * label near-black. Card surfaces are handled with an explicit
+     * `dark:bg-gray-100` at the call site instead.
+     */
+
+    /* Brand blue: tints darken, mid stays usable both as text and as a button. */
+    --color-primary-50: #141d33;
+    --color-primary-100: #1a2647;
+    /* 200 is deliberately NOT darkened: it is the sidebar's nav-label colour, and
+       the sidebar sits on a dark gradient in both themes. Darkening it made the
+       menu text nearly invisible. It also serves `border-primary-200`, which just
+       reads as a brighter accent border here. */
+    --color-primary-300: #7f9dff;
+    --color-primary-400: #6b8dff;
+    --color-primary-500: #4f76f5;
+    --color-primary-600: #4062e8;
+    --color-primary-700: #4668e8;
+    /* 800/900/950 intentionally unchanged — the sidebar is built on them. */
+
+    /* Red / accent: alert panels and denial states. */
+    --color-accent-50: #2a1216;
+    --color-accent-100: #3a171d;
+    --color-accent-200: #55212a;
+    --color-accent-300: #7a2f3a;
+    --color-accent-400: #e35d6e;
+    --color-accent-500: #f2707f;
+    --color-accent-600: #ff7d8b;
+    --color-accent-700: #ff9aa5;
+    --color-accent-800: #ffb3bb;
+
+    /* Gold: warnings, pending states, sidebar badges. */
+    --color-gold-50: #241d07;
+    --color-gold-100: #33280a;
+    --color-gold-200: #4a3a0d;
+    --color-gold-300: #6b5411;
+    /* 400 is the sidebar's accent (active marker, quick-action icons) and sits on
+       a dark gradient in both themes, so it stays bright. */
+    --color-gold-500: #d9ab2e;
+    --color-gold-600: #e8b93a;
+    --color-gold-700: #f2c94c;
+    --color-gold-800: #f7d868;
+    --color-gold-900: #fbe89a;
+
+    /* Emerald: success and active statuses. Tailwind's own scale, remapped here
+       because status badges pair emerald-100 backgrounds with emerald-700 text. */
+    --color-emerald-50: #0b2019;
+    --color-emerald-100: #0f2d23;
+    --color-emerald-200: #16402f;
+    --color-emerald-300: #1d5540;
+    --color-emerald-500: #35c88e;
+    --color-emerald-600: #43d69b;
+    --color-emerald-700: #6ee7b7;
+    --color-emerald-800: #a7f3d0;
+
+    /*
+     * Tailwind's own scales, used for the category chips on the audit log and
+     * notifications (QR scan, document upload, duplicate resolution) and for the
+     * unverified-account warning. Each is only ever a `-100` background paired
+     * with `-700` text, so there is no background/text conflict to resolve.
+     */
+    --color-cyan-100: #0b2a30;
+    --color-cyan-700: #5fd8e8;
+    --color-purple-100: #241a38;
+    --color-purple-700: #c4a5f5;
+    --color-orange-100: #331f0e;
+    --color-orange-700: #ffab63;
+    --color-amber-100: #33270a;
+    --color-amber-700: #f5c445;
+
+    /*
+     * Shadows are tuned for a light ground and simply vanish on a dark one.
+     * Depth is carried by a hairline light border instead.
+     */
+    --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 12px rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 0 0 1px rgb(255 255 255 / 0.1), 0 10px 28px rgb(0 0 0 / 0.55);
+
+    color-scheme: dark;
+  }
+
+  html[data-theme="dark"] ::selection {
+    background-color: var(--color-primary-200);
+    color: var(--color-gray-900);
+  }
+
+  /* Compact density: tighter rows so more records fit on one screen. */
+  html[data-density="compact"] :is(td, th) {
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary-600);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-950);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
