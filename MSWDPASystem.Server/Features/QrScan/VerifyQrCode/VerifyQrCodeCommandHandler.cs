@@ -4,6 +4,7 @@ using MSWDPASystem.Server.Common.Exceptions;
 using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
+using MSWDPASystem.Server.Domain.Enums;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Features.QrScan.VerifyQrCode;
@@ -17,6 +18,14 @@ public class VerifyQrCodeCommandHandler(ApplicationDbContext db, ICurrentUserSer
             .Include(b => b.Programs).ThenInclude(bp => bp.WelfareProgram)
             .FirstOrDefaultAsync(b => b.ClientNumber == request.ClientNumber.Trim(), ct)
             ?? throw new NotFoundException($"No beneficiary found with client number '{request.ClientNumber}'.");
+
+        // Captured before this scan is written so the operator can see when this
+        // beneficiary was last verified — a same-day repeat scan is worth noticing.
+        var previousScanAt = await db.QrScanLogs
+            .Where(l => l.BeneficiaryId == beneficiary.Id)
+            .OrderByDescending(l => l.ScannedAt)
+            .Select(l => (DateTime?)l.ScannedAt)
+            .FirstOrDefaultAsync(ct);
 
         var log = new QrScanLog
         {
@@ -46,6 +55,29 @@ public class VerifyQrCodeCommandHandler(ApplicationDbContext db, ICurrentUserSer
             .Select(bp => bp.WelfareProgram.Name)
             .ToList();
 
+        // FR-3.5: complete assistance history for this beneficiary.
+        var history = await db.AssistanceRequests
+            .AsNoTracking()
+            .Where(r => r.BeneficiaryId == beneficiary.Id)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new ScanAssistanceHistoryDto(
+                r.Id,
+                r.RequestNumber,
+                r.AssistanceType.Name,
+                r.WelfareProgram != null ? r.WelfareProgram.Name : null,
+                r.Amount,
+                r.Status.ToString(),
+                r.CreatedAt,
+                r.ReleasedAt))
+            .ToListAsync(ct);
+
+        var released = history.Where(h => h.Status == nameof(AssistanceRequestStatus.Released)).ToList();
+
+        var pending = history.Count(h =>
+            h.Status == nameof(AssistanceRequestStatus.Submitted) ||
+            h.Status == nameof(AssistanceRequestStatus.UnderReview) ||
+            h.Status == nameof(AssistanceRequestStatus.Approved));
+
         return Result<VerifyQrCodeResponse>.Success(new VerifyQrCodeResponse(
             beneficiary.Id,
             beneficiary.ClientNumber,
@@ -54,7 +86,13 @@ public class VerifyQrCodeCommandHandler(ApplicationDbContext db, ICurrentUserSer
             beneficiary.Barangay,
             beneficiary.ContactNumber,
             activePrograms,
-            log.ScannedAt
+            log.ScannedAt,
+            history,
+            history.Count,
+            released.Sum(h => h.Amount ?? 0m),
+            released.Max(h => h.ReleasedAt),
+            pending,
+            previousScanAt
         ));
     }
 }
