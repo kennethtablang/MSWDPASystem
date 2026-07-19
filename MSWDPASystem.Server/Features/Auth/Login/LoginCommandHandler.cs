@@ -79,7 +79,9 @@ public class LoginCommandHandler(
             FullName: user.FullName,
             Email: user.Email ?? string.Empty,
             Role: roles.FirstOrDefault() ?? string.Empty,
-            AllowedModules: allowedModules
+            AllowedModules: allowedModules,
+            Preferences: Features.Account.GetMyAccount.GetMyAccountQueryHandler
+                .ParsePreferences(user.Preferences)
         ));
     }
 }
