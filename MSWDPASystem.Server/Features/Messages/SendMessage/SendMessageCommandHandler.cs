@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
+using MSWDPASystem.Server.Features.Account.GetMyAccount;
 using MSWDPASystem.Server.Features.Messages.GetMessages;
 using MSWDPASystem.Server.Infrastructure.Data;
 
@@ -32,15 +33,20 @@ public class SendMessageCommandHandler(
 
         db.Messages.Add(message);
 
-        db.Notifications.Add(new Notification
+        // The message itself is always delivered; only the bell notification is
+        // subject to the recipient's preference.
+        if (GetMyAccountQueryHandler.ParsePreferences(recipient.Preferences).NotifyOnNewMessage)
         {
-            RecipientUserId = request.RecipientId,
-            Title = $"New message from {sender?.FullName ?? currentUser.UserName}",
-            Message = request.Subject,
-            Type = Domain.Enums.NotificationType.NewMessage,
-            RelatedEntityType = "Message",
-            RelatedEntityId = message.Id.ToString(),
-        });
+            db.Notifications.Add(new Notification
+            {
+                RecipientUserId = request.RecipientId,
+                Title = $"New message from {sender?.FullName ?? currentUser.UserName}",
+                Message = request.Subject,
+                Type = Domain.Enums.NotificationType.NewMessage,
+                RelatedEntityType = "Message",
+                RelatedEntityId = message.Id.ToString(),
+            });
+        }
 
         await db.SaveChangesAsync(ct);
 
