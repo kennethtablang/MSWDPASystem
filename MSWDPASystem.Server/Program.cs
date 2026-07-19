@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using MSWDPASystem.Server.Common.Behaviors;
 using MSWDPASystem.Server.Common.Exceptions;
 using MSWDPASystem.Server.Common.Interfaces;
+using MSWDPASystem.Server.Common.Services;
 using MSWDPASystem.Server.Domain.Entities;
 using MSWDPASystem.Server.Infrastructure.Data;
 using MSWDPASystem.Server.Infrastructure.Services;
@@ -91,6 +92,11 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
+// FR-8.1: runtime system parameters, cached in memory and invalidated on save.
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+builder.Services.AddScoped<KinshipService>();
 
 // Email — "Dev" logs messages; "Smtp" sends via Email:Smtp configuration
 if (string.Equals(builder.Configuration["Email:Mode"], "Smtp", StringComparison.OrdinalIgnoreCase))
