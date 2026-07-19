@@ -17,9 +17,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<QrScanLog> QrScanLogs => Set<QrScanLog>();
     public DbSet<DuplicateFlag> DuplicateFlags => Set<DuplicateFlag>();
+    public DbSet<BeneficiaryRelationship> BeneficiaryRelationships => Set<BeneficiaryRelationship>();
+    public DbSet<AssistedTransaction> AssistedTransactions => Set<AssistedTransaction>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<ContentItem> ContentItems => Set<ContentItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -109,12 +113,66 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        builder.Entity<BeneficiaryRelationship>(entity =>
+        {
+            entity.HasOne(r => r.Beneficiary)
+                .WithMany()
+                .HasForeignKey(r => r.BeneficiaryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(r => r.Relative)
+                .WithMany()
+                .HasForeignKey(r => r.RelativeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // One declared link per ordered pair — re-declaring updates rather
+            // than stacking duplicate edges that would confuse the BFS.
+            entity.HasIndex(r => new { r.BeneficiaryId, r.RelativeId }).IsUnique();
+        });
+
+        builder.Entity<AssistedTransaction>(entity =>
+        {
+            entity.HasOne(t => t.Beneficiary)
+                .WithMany()
+                .HasForeignKey(t => t.BeneficiaryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // A representative who is also a beneficiary is linked, but deleting
+            // either record must never cascade away the assisted-service history.
+            entity.HasOne(t => t.RepresentativeBeneficiary)
+                .WithMany()
+                .HasForeignKey(t => t.RepresentativeBeneficiaryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(t => t.BeneficiaryId);
+            entity.HasIndex(t => t.CreatedAt);
+        });
+
         builder.Entity<Notification>(entity =>
         {
             entity.HasOne(n => n.RecipientUser)
                 .WithMany()
                 .HasForeignKey(n => n.RecipientUserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SystemSetting>(entity =>
+        {
+            entity.HasIndex(s => s.Key).IsUnique();
+            entity.Property(s => s.Key).HasMaxLength(100);
+        });
+
+        builder.Entity<ContentItem>(entity =>
+        {
+            entity.Property(c => c.Title).HasMaxLength(200).IsRequired();
+            entity.Property(c => c.Body).HasMaxLength(4000).IsRequired();
+            entity.Property(c => c.CreatedByName).HasMaxLength(200);
+            entity.Property(c => c.UpdatedByName).HasMaxLength(200);
+
+            // Every public read filters on these three together, and the admin
+            // list filters on Type alone; one composite covers both.
+            entity.HasIndex(c => new { c.Type, c.Status, c.PublishAt });
+            entity.HasIndex(c => c.IsDeleted);
         });
 
         builder.Entity<Message>(entity =>
