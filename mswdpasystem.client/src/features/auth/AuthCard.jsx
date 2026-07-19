@@ -11,7 +11,7 @@ export default function AuthCard({ title, subtitle, children }) {
       <Link to="/" aria-label="Back to MSWD Caba home">
         <Logo size={44} />
       </Link>
-      <div className="mt-6 w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-card p-6 sm:p-8">
+      <div className="mt-6 w-full max-w-md bg-white dark:bg-gray-100 rounded-2xl border border-gray-200 shadow-card p-6 sm:p-8">
         <h1 className="text-xl font-bold text-gray-900">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
         <div className="mt-6">{children}</div>

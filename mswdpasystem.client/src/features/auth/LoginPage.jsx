@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,12 @@ const schema = z.object({
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  // Set when the session was ended for the user (e.g. the FR-1.9 idle timeout)
+  // so they are told why they are back at the sign-in screen. Navigation state is
+  // untrusted input here, so anything that is not a string is ignored rather than
+  // handed to React as a child.
+  const rawNotice = useLocation().state?.notice;
+  const notice = typeof rawNotice === 'string' ? rawNotice : null;
   const [showPassword, setShowPassword] = useState(false);
   const [captchaValid, setCaptchaValid] = useState(false);
   const [serverError, setServerError] = useState('');
@@ -41,7 +47,13 @@ export default function LoginPage() {
       if (rememberMe) localStorage.setItem('rememberedUserName', userName);
       else localStorage.removeItem('rememberedUserName');
       const data = await login(userName, password);
-      navigate(data.role === 'Citizen' ? '/portal' : '/dashboard');
+
+      // Honour the user's chosen landing page. Citizens are always sent to the
+      // portal — the staff pages would only 403 for them.
+      const landing = data.role === 'Citizen'
+        ? '/portal'
+        : (data.preferences?.landingPage ?? '/dashboard');
+      navigate(landing);
     } catch (err) {
       setServerError(err.response?.data?.message ?? 'Sign in failed. Please try again.');
     }
@@ -61,6 +73,15 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-gray-500">
               Sign in to the MSWD Caba Profiling &amp; Assistance System.
             </p>
+
+            {notice && !serverError && (
+              <div
+                role="status"
+                className="mt-5 px-4 py-3 bg-gold-50 border border-gold-300 rounded-lg text-sm text-gold-900"
+              >
+                {notice}
+              </div>
+            )}
 
             {serverError && (
               <div
@@ -170,7 +191,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <ul className="relative space-y-4 text-sm text-primary-100">
+        <ul className="relative space-y-4 text-sm text-primary-100 dark:text-primary-200">
           <li className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-gold-400">
               <ShieldCheck size={18} aria-hidden="true" />

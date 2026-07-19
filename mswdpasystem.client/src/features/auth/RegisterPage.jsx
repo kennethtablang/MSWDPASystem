@@ -75,7 +75,7 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-10">
         <Link to="/" aria-label="Back to MSWD Caba home"><Logo size={44} /></Link>
-        <div className="mt-6 w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-card p-6 sm:p-8 text-center">
+        <div className="mt-6 w-full max-w-md bg-white dark:bg-gray-100 rounded-2xl border border-gray-200 shadow-card p-6 sm:p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
             <MailCheck size={24} aria-hidden="true" />
           </div>
