@@ -4,6 +4,7 @@ using MSWDPASystem.Server.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260718135900_AddSystemSettingsAndUserPreferences")]
+    partial class AddSystemSettingsAndUserPreferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -139,9 +142,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.Property<Guid>("AssistanceTypeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("AssistedReason")
-                        .HasColumnType("int");
-
                     b.Property<Guid>("BeneficiaryId")
                         .HasColumnType("uniqueidentifier");
 
@@ -157,9 +157,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.Property<string>("DeniedByUserId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("IsAssisted")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Purpose")
                         .HasColumnType("nvarchar(max)");
 
@@ -167,12 +164,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ReleasedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReleasedToName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReleasedToRelation")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Remarks")
@@ -278,83 +269,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.HasIndex("WelfareProgramId");
 
                     b.ToTable("AssistanceTypes");
-                });
-
-            modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.AssistedTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Acknowledged")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("AcknowledgementSignaturePath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AssistedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AssistedByUserName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AuthorizationDocumentPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("BeneficiaryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("BeneficiaryPresent")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Reason")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReasonNotes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RelatedEntityId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RelatedEntityType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("RepresentativeBeneficiaryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("RepresentativeIdNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RepresentativeIdType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RepresentativeName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RepresentativeRelation")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ServiceType")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BeneficiaryId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("RepresentativeBeneficiaryId");
-
-                    b.ToTable("AssistedTransactions");
                 });
 
             modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.AuditLog", b =>
@@ -512,109 +426,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.HasIndex("WelfareProgramId");
 
                     b.ToTable("BeneficiaryPrograms");
-                });
-
-            modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.BeneficiaryRelationship", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BeneficiaryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsInferred")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("RelativeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RelativeId");
-
-                    b.HasIndex("BeneficiaryId", "RelativeId")
-                        .IsUnique();
-
-                    b.ToTable("BeneficiaryRelationships");
-                });
-
-            modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.ContentItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Body")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("PublishAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedByName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("UpdatedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("Type", "Status", "PublishAt");
-
-                    b.ToTable("ContentItems");
                 });
 
             modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.Document", b =>
@@ -1118,24 +929,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.Navigation("WelfareProgram");
                 });
 
-            modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.AssistedTransaction", b =>
-                {
-                    b.HasOne("MSWDPASystem.Server.Domain.Entities.Beneficiary", "Beneficiary")
-                        .WithMany()
-                        .HasForeignKey("BeneficiaryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MSWDPASystem.Server.Domain.Entities.Beneficiary", "RepresentativeBeneficiary")
-                        .WithMany()
-                        .HasForeignKey("RepresentativeBeneficiaryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Beneficiary");
-
-                    b.Navigation("RepresentativeBeneficiary");
-                });
-
             modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.Beneficiary", b =>
                 {
                     b.HasOne("MSWDPASystem.Server.Domain.Entities.Household", "Household")
@@ -1163,25 +956,6 @@ namespace MSWDPASystem.Server.Infrastructure.Data.Migrations
                     b.Navigation("Beneficiary");
 
                     b.Navigation("WelfareProgram");
-                });
-
-            modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.BeneficiaryRelationship", b =>
-                {
-                    b.HasOne("MSWDPASystem.Server.Domain.Entities.Beneficiary", "Beneficiary")
-                        .WithMany()
-                        .HasForeignKey("BeneficiaryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MSWDPASystem.Server.Domain.Entities.Beneficiary", "Relative")
-                        .WithMany()
-                        .HasForeignKey("RelativeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Beneficiary");
-
-                    b.Navigation("Relative");
                 });
 
             modelBuilder.Entity("MSWDPASystem.Server.Domain.Entities.Document", b =>
