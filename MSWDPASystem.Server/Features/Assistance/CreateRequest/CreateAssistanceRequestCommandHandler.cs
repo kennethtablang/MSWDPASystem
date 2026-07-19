@@ -6,6 +6,7 @@ using MSWDPASystem.Server.Common.Interfaces;
 using MSWDPASystem.Server.Common.Models;
 using MSWDPASystem.Server.Domain.Entities;
 using MSWDPASystem.Server.Domain.Enums;
+using MSWDPASystem.Server.Features.Account.GetMyAccount;
 using MSWDPASystem.Server.Infrastructure.Data;
 
 namespace MSWDPASystem.Server.Features.Assistance.CreateRequest;
@@ -52,10 +53,12 @@ public class CreateAssistanceRequestCommandHandler(
             Notes = "Request submitted."
         });
 
-        // Notify all HeadCoordinators
+        // Notify HeadCoordinators who have not turned assistance alerts off.
         var headCoordinators = await userManager.GetUsersInRoleAsync("HeadCoordinator");
         foreach (var hc in headCoordinators)
         {
+            if (!GetMyAccountQueryHandler.ParsePreferences(hc.Preferences).NotifyOnAssistanceStatus)
+                continue;
             context.Notifications.Add(new Notification
             {
                 RecipientUserId = hc.Id,
