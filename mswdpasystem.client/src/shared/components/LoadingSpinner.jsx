@@ -3,7 +3,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }) {
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <svg
-        className={`animate-spin text-blue-600 ${sizes[size]}`}
+        className={`animate-spin text-primary-600 ${sizes[size]}`}
         fill="none" viewBox="0 0 24 24"
       >
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

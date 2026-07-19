@@ -1,25 +1,31 @@
-const beneficiaryColors = {
-  Active: 'bg-green-100 text-green-700',
-  Verified: 'bg-blue-100 text-blue-700',
-  Flagged: 'bg-yellow-100 text-yellow-700',
-  Inactive: 'bg-gray-100 text-gray-500',
+import Badge from './ui/Badge';
+
+const beneficiaryTones = {
+  Active: 'emerald',
+  Verified: 'blue',
+  Flagged: 'gold',
+  Inactive: 'gray',
 };
 
-const assistanceColors = {
-  Submitted: 'bg-blue-100 text-blue-700',
-  UnderReview: 'bg-yellow-100 text-yellow-700',
-  Approved: 'bg-green-100 text-green-700',
-  Released: 'bg-emerald-100 text-emerald-700',
-  Denied: 'bg-red-100 text-red-700',
+const assistanceTones = {
+  Submitted: 'blue',
+  UnderReview: 'gold',
+  Approved: 'emerald',
+  Released: 'emerald',
+  Denied: 'red',
 };
 
-export default function StatusBadge({ status, type = 'beneficiary' }) {
-  const map = type === 'assistance' ? assistanceColors : beneficiaryColors;
-  const color = map[status] ?? 'bg-gray-100 text-gray-500';
+/**
+ * The two status vocabularies share no values, so the correct palette can be
+ * inferred from the status itself. `type` stays supported for existing callers
+ * but is only a tie-breaker for unknown values.
+ */
+export default function StatusBadge({ status, type = 'beneficiary', className = '' }) {
+  const map =
+    status in assistanceTones ? assistanceTones
+      : status in beneficiaryTones ? beneficiaryTones
+        : type === 'assistance' ? assistanceTones : beneficiaryTones;
+
   const label = status === 'UnderReview' ? 'Under Review' : status;
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {label}
-    </span>
-  );
+  return <Badge tone={map[status] ?? 'gray'} className={className}>{label}</Badge>;
 }
