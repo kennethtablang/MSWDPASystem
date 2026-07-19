@@ -64,14 +64,14 @@ export default function AssistanceRequestDetailPage() {
   const nextStatuses = NEXT_STATUSES[req.status] ?? [];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5">
+    <div className="max-w-5xl space-y-5">
       <button onClick={() => navigate('/assistance')}
         className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
         <ArrowLeft size={16} /> Back to Requests
       </button>
 
       {/* Header card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div>
             <p className="font-mono text-sm text-gray-400 mb-1">{req.requestNumber}</p>
@@ -118,7 +118,7 @@ export default function AssistanceRequestDetailPage() {
       </div>
 
       {/* Status Timeline */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Status History</h4>
         <ol className="relative ml-3">
           {req.statusHistory?.map((h, idx) => {

@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { ArrowLeft, Search } from 'lucide-react';
 import api from '../../shared/utils/api';
+import notify from '../../shared/utils/notify';
+import AssistedServiceFields from '../../shared/components/AssistedServiceFields';
+import {
+  EMPTY_ASSISTED, isAssistedComplete, toAssistedPayload,
+} from '../../shared/utils/assistedService';
 
 const schema = z.object({
   beneficiaryId: z.string().min(1, 'Select a beneficiary'),
@@ -32,12 +36,29 @@ function Field({ label, error, children, required }) {
 
 export default function CreateAssistanceRequestPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
+  // null = untouched (fall back to the prefill); an explicit clear sets `false`.
+  const [chosen, setChosen] = useState(null);
+  const [assisted, setAssisted] = useState(EMPTY_ASSISTED);
+
+  // Arriving from a beneficiary profile ("File request") preselects that client,
+  // so staff do not search again for someone they were already looking at.
+  const prefillId = params.get('beneficiaryId');
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
+    // Seeded here rather than synced in an effect — the id is known at mount.
+    defaultValues: { beneficiaryId: prefillId ?? '' },
   });
+
+  const { data: prefilled } = useQuery({
+    queryKey: ['beneficiary', prefillId],
+    queryFn: () => api.get(`/beneficiaries/${prefillId}`).then((r) => r.data),
+    enabled: !!prefillId,
+  });
+
+  const selectedBeneficiary = chosen === null ? (prefilled ?? null) : (chosen || null);
 
   const { data: beneficiaries } = useQuery({
     queryKey: ['beneficiaries-search', search],
@@ -56,21 +77,53 @@ export default function CreateAssistanceRequestPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: payload => api.post('/assistance', payload),
-    onSuccess: res => {
-      toast.success(`Request ${res.data.requestNumber} submitted successfully.`);
+    mutationFn: async (payload) => {
+      const { data: created } = await api.post('/assistance', payload.request);
+
+      // Recorded only after the request exists, so it can be tied to the request
+      // number. A failure here must not imply the request itself failed — it is
+      // reported separately rather than rolling anything back.
+      let assistedRecorded = true;
+      if (payload.assisted) {
+        try {
+          await api.post('/assisted-service', toAssistedPayload(payload.assisted, {
+            beneficiaryId: payload.request.beneficiaryId,
+            serviceType: 'RequestFiling',
+            relatedEntityType: 'AssistanceRequest',
+            relatedEntityId: created.id,
+          }));
+        } catch {
+          assistedRecorded = false;
+        }
+      }
+      return { created, assistedRecorded };
+    },
+    onSuccess: ({ created, assistedRecorded }) => {
+      if (assistedRecorded) {
+        notify.success(`Request ${created.requestNumber} submitted.`);
+      } else {
+        notify.warning(
+          `Request ${created.requestNumber} submitted, but the assisted-service note was not saved.`,
+          'Record it from the Assisted Service page so the transaction stays attributable.',
+        );
+      }
       navigate('/assistance');
     },
-    onError: err => toast.error(err.response?.data?.message ?? 'Submission failed.'),
+    onError: (err) => notify.error(err, 'Submission failed'),
   });
+
+  const assistedIncomplete = !isAssistedComplete(assisted);
 
   const onSubmit = data => {
     mutation.mutate({
-      beneficiaryId: data.beneficiaryId,
-      assistanceTypeId: data.assistanceTypeId,
-      welfareProgramId: data.welfareProgramId || null,
-      amount: data.amount ? parseFloat(data.amount) : null,
-      purpose: data.purpose || null,
+      request: {
+        beneficiaryId: data.beneficiaryId,
+        assistanceTypeId: data.assistanceTypeId,
+        welfareProgramId: data.welfareProgramId || null,
+        amount: data.amount ? parseFloat(data.amount) : null,
+        purpose: data.purpose || null,
+      },
+      assisted: assisted.isAssisted ? assisted : null,
     });
   };
 
@@ -81,7 +134,7 @@ export default function CreateAssistanceRequestPage() {
         <ArrowLeft size={16} /> Back to Assistance Requests
       </button>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-1">New Assistance Request</h3>
         <p className="text-sm text-gray-500 mb-6">Search for the beneficiary and fill in the request details.</p>
 
@@ -94,7 +147,7 @@ export default function CreateAssistanceRequestPage() {
                   <p className="text-sm font-medium text-gray-800">{selectedBeneficiary.fullName}</p>
                   <p className="text-xs text-gray-500">{selectedBeneficiary.clientNumber}</p>
                 </div>
-                <button type="button" onClick={() => { setSelectedBeneficiary(null); setValue('beneficiaryId', ''); setSearch(''); }}
+                <button type="button" onClick={() => { setChosen(false); setValue('beneficiaryId', ''); setSearch(''); }}
                   className="text-xs text-primary-600 hover:underline">Change</button>
               </div>
             ) : (
@@ -108,10 +161,10 @@ export default function CreateAssistanceRequestPage() {
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {beneficiaries?.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-100 border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {beneficiaries.map(b => (
                       <button key={b.id} type="button"
-                        onClick={() => { setSelectedBeneficiary(b); setValue('beneficiaryId', b.id); setSearch(''); }}
+                        onClick={() => { setChosen(b); setValue('beneficiaryId', b.id); setSearch(''); }}
                         className="w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0">
                         <p className="text-sm font-medium text-gray-800">{b.fullName}</p>
                         <p className="text-xs text-gray-400">{b.clientNumber} · {b.barangay}</p>
@@ -147,12 +200,24 @@ export default function CreateAssistanceRequestPage() {
               placeholder="Briefly describe the purpose of the assistance request…" />
           </Field>
 
-          <div className="flex gap-3 justify-end pt-2 border-t border-gray-100">
+          {/* Captured here rather than as a separate errand afterwards. */}
+          <AssistedServiceFields
+            value={assisted}
+            onChange={setAssisted}
+            beneficiaryId={selectedBeneficiary?.id}
+          />
+
+          <div className="flex items-center gap-3 justify-end pt-2 border-t border-gray-100">
+            {assistedIncomplete && (
+              <p className="mr-auto text-xs text-accent-700">
+                Complete the assisted-service details, or untick that box.
+              </p>
+            )}
             <button type="button" onClick={() => navigate('/assistance')}
               className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
               Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending}
+            <button type="submit" disabled={mutation.isPending || assistedIncomplete}
               className="px-5 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               {mutation.isPending ? 'Submitting…' : 'Submit Request'}
             </button>

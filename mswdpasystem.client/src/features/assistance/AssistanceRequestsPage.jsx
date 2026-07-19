@@ -9,6 +9,7 @@ import DataTable from '../../shared/components/DataTable';
 import StatusBadge from '../../shared/components/StatusBadge';
 import Pagination from '../../shared/components/Pagination';
 import Modal from '../../shared/components/Modal';
+import usePreferences from '../../shared/hooks/usePreferences';
 
 const TABS = ['All', 'Submitted', 'UnderReview', 'Approved', 'Released', 'Denied'];
 const TAB_LABELS = { UnderReview: 'Under Review' };
@@ -27,12 +28,13 @@ export default function AssistanceRequestsPage() {
   const [statusForm, setStatusForm] = useState({ newStatus: '', notes: '', denialReason: '' });
 
   const beneficiaryId = searchParams.get('beneficiaryId');
+  const pageSize = usePreferences().defaultPageSize;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['assistance', page, tab, beneficiaryId],
+    queryKey: ['assistance', page, tab, beneficiaryId, pageSize],
     queryFn: () => api.get('/assistance', {
       params: {
-        page, pageSize: 20,
+        page, pageSize,
         status: tab === 'All' ? undefined : tab,
         beneficiaryId: beneficiaryId || undefined,
       }
@@ -109,7 +111,7 @@ export default function AssistanceRequestsPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-100 rounded-xl border border-gray-200 p-4">
         <DataTable
           columns={columns}
           data={data?.items ?? []}
@@ -122,7 +124,7 @@ export default function AssistanceRequestsPage() {
           page={page}
           totalPages={data?.totalPages ?? 1}
           totalCount={data?.totalCount ?? 0}
-          pageSize={20}
+          pageSize={pageSize}
           onPageChange={setPage}
         />
       </div>
