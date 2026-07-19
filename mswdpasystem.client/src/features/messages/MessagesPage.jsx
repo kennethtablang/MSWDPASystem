@@ -15,7 +15,7 @@ const schema = z.object({
   body: z.string().min(1, 'Message body is required'),
 });
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 export default function MessagesPage() {
   const qc = useQueryClient();
@@ -63,23 +63,23 @@ export default function MessagesPage() {
   return (
     <div className="flex h-full gap-4" style={{ minHeight: '600px' }}>
       {/* Left panel */}
-      <div className="w-72 shrink-0 flex flex-col bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="w-72 shrink-0 flex flex-col bg-white dark:bg-gray-100 rounded-xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <div className="flex gap-1">
             <button onClick={() => { setTab('inbox'); setSelected(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${tab === 'inbox' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${tab === 'inbox' ? 'bg-primary-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
               <Inbox size={13} /> Inbox
               {unreadCount > 0 && tab !== 'inbox' && (
-                <span className="ml-1 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[10px]">{unreadCount}</span>
+                <span className="ml-1 bg-accent-500 text-white rounded-full px-1.5 py-0.5 text-[10px]">{unreadCount}</span>
               )}
             </button>
             <button onClick={() => { setTab('sent'); setSelected(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${tab === 'sent' ? 'bg-blue-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${tab === 'sent' ? 'bg-primary-700 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
               <Send size={13} /> Sent
             </button>
           </div>
           <button onClick={() => setComposeOpen(true)}
-            className="p-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors" title="Compose">
+            className="p-1.5 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors" title="Compose">
             <Mail size={15} />
           </button>
         </div>
@@ -93,12 +93,12 @@ export default function MessagesPage() {
                 key={m.id}
                 onClick={() => setSelected(m)}
                 className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
-                  selected?.id === m.id ? 'bg-blue-50' : ''
-                } ${tab === 'inbox' && !m.isRead ? 'bg-blue-50' : ''}`}
+                  selected?.id === m.id ? 'bg-primary-50' : ''
+                } ${tab === 'inbox' && !m.isRead ? 'bg-primary-50' : ''}`}
               >
                 <div className="flex items-start gap-2">
                   {tab === 'inbox' && !m.isRead && (
-                    <span className="mt-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />
+                    <span className="mt-1.5 w-1.5 h-1.5 bg-primary-500 rounded-full shrink-0" />
                   )}
                   <div className={`min-w-0 ${tab === 'inbox' && !m.isRead ? '' : 'ml-3.5'}`}>
                     <p className="text-xs font-semibold text-gray-800 truncate">
@@ -117,7 +117,7 @@ export default function MessagesPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex-1 bg-white dark:bg-gray-100 rounded-xl border border-gray-200 overflow-hidden">
         {selected ? (
           <div className="h-full flex flex-col">
             <div className="px-6 py-4 border-b border-gray-100">
@@ -138,7 +138,7 @@ export default function MessagesPage() {
             <Mail size={36} className="opacity-30" />
             <p className="text-sm">Select a message to read</p>
             <button onClick={() => setComposeOpen(true)}
-              className="mt-2 flex items-center gap-2 px-4 py-2 text-sm text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+              className="mt-2 flex items-center gap-2 px-4 py-2 text-sm text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors">
               <Send size={15} /> Compose Message
             </button>
           </div>
@@ -149,28 +149,28 @@ export default function MessagesPage() {
       <Modal isOpen={composeOpen} onClose={() => { setComposeOpen(false); reset(); }} title="New Message" size="md">
         <form onSubmit={handleSubmit(d => sendMutation.mutate(d))} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To <span className="text-accent-500">*</span></label>
             <select {...register('recipientId')} className={inputCls}>
               <option value="">Select recipient…</option>
               {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role})</option>)}
             </select>
-            {errors.recipientId && <p className="mt-1 text-xs text-red-600">{errors.recipientId.message}</p>}
+            {errors.recipientId && <p className="mt-1 text-xs text-accent-600">{errors.recipientId.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subject <span className="text-accent-500">*</span></label>
             <input {...register('subject')} className={inputCls} />
-            {errors.subject && <p className="mt-1 text-xs text-red-600">{errors.subject.message}</p>}
+            {errors.subject && <p className="mt-1 text-xs text-accent-600">{errors.subject.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Message <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Message <span className="text-accent-500">*</span></label>
             <textarea {...register('body')} rows={5} className={`${inputCls} resize-none`} />
-            {errors.body && <p className="mt-1 text-xs text-red-600">{errors.body.message}</p>}
+            {errors.body && <p className="mt-1 text-xs text-accent-600">{errors.body.message}</p>}
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={() => { setComposeOpen(false); reset(); }}
               className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="submit" disabled={sendMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-60">
+              className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-primary-700 rounded-lg hover:bg-primary-800 disabled:opacity-60">
               <Send size={14} /> {sendMutation.isPending ? 'Sending…' : 'Send Message'}
             </button>
           </div>
